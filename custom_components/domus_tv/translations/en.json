@@ -1,0 +1,11 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Domus TV",
+        "description": "Adds a \"TV Freebox\" page to the sidebar where you design dashboards for the Domus app on the Freebox Player and pair your Players."
+      }
+    },
+    "abort": { "single_instance_allowed": "Domus TV is already set up." }
+  }
+}

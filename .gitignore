@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.tar
+*.fbxpkg
+*.user
+tv/tools/player.txt

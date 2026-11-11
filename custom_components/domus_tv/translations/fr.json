@@ -1,0 +1,11 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Domus TV",
+        "description": "Ajoute une page « TV Freebox » dans la barre latérale pour créer les tableaux de bord de l'app Domus du Freebox Player et associer vos Players."
+      }
+    },
+    "abort": { "single_instance_allowed": "Domus TV est déjà configuré." }
+  }
+}

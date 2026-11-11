@@ -1,0 +1,11 @@
+CameraView 1.0 CameraView.qml
+DashboardScreen 1.0 DashboardScreen.qml
+DetailPanel 1.0 DetailPanel.qml
+Icon 1.0 Icon.qml
+LiveImage 1.0 LiveImage.qml
+MenuPanel 1.0 MenuPanel.qml
+PairScreen 1.0 PairScreen.qml
+SetupScreen 1.0 SetupScreen.qml
+Tile 1.0 Tile.qml
+Toast 1.0 Toast.qml
+Graph 1.0 Graph.qml
