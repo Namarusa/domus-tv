@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Domus TV",
-        "description": "Adds a \"TV Freebox\" page to the sidebar where you design dashboards for the Domus app on the Freebox Player and pair your Players."
+        "description": "Adds a \"Domus TV\" page to the sidebar where you design dashboards for the Domus TV app (Freebox Player, LG webOS…) and pair your TVs."
       }
     },
     "abort": { "single_instance_allowed": "Domus TV is already set up." }

@@ -73,7 +73,7 @@ FocusScope {
             fresh = false;
             if (v.length > max) v = d;
             setPart(i, v);
-            if (seg < 5 && (v.length === 3 || parseInt(v + "0", 10) > 255)) move(1);
+            if (seg < 5 && (v === "0" || v.length === 3 || parseInt(v + "0", 10) > 255)) move(1);
         } else if (k === Qt.Key_Left) move(-1);
         else if (k === Qt.Key_Right) move(1);
         else if (k === Qt.Key_Up || k === Qt.Key_Down) {

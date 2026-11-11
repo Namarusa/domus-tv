@@ -4,3 +4,5 @@ __pycache__/
 *.fbxpkg
 *.user
 tv/tools/player.txt
+web/dist/
+node_modules/

@@ -27,6 +27,9 @@ def async_register_views(hass: HomeAssistant) -> None:
 
 
 class _Base(HomeAssistantView):
+    # TV web apps (LG, Samsung) run from file:// or their own origin.
+    cors_allowed = True
+
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
 

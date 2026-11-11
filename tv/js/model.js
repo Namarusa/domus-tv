@@ -1,6 +1,12 @@
 .pragma library
 // Layout, icons, state text and detail-panel rows. ES5 only (Freebox Player JS engine).
 
+function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+// dd/MM hh:mm without Qt, so the same file runs in a browser.
+function fmtDate(dt, withA) {
+    return pad2(dt.getDate()) + "/" + pad2(dt.getMonth() + 1) + (withA ? " à " : " ") + pad2(dt.getHours()) + ":" + pad2(dt.getMinutes());
+}
+
 // ---- layout: keep in sync with ha/custom_components/domus_tv/frontend/layout.js
 var SCREEN = { width: 1280, height: 720, top: 84, side: 40, bottom: 28, gap: 14, header: 46 };
 
@@ -168,7 +174,7 @@ function stateText(tile, st) {
     if (d === "scene" || d === "script" || d === "button" || d === "input_button") return d === "script" && st.s === "on" ? "En cours…" : "";
     if (d === "sensor" && a.device_class === "timestamp") {
         var dt = new Date(st.s);
-        return isNaN(dt.getTime()) ? st.s : Qt.formatDateTime(dt, "dd/MM hh:mm");
+        return isNaN(dt.getTime()) ? st.s : fmtDate(dt, false);
     }
     var num = fmtNumber(st.s);
     if (num !== null) return num + (a.unit_of_measurement ? " " + a.unit_of_measurement : "");
@@ -338,7 +344,7 @@ function infoLines(tile, st) {
     if (a.hvac_action) out.push(["Activité", LABELS[a.hvac_action] || a.hvac_action]);
     if (a.humidity !== undefined) out.push(["Humidité", a.humidity + " %"]);
     if (a.source) out.push(["Source", a.source]);
-    if (st.c) out.push(["Depuis", Qt.formatDateTime(new Date(st.c * 1000), "dd/MM à hh:mm")]);
+    if (st.c) out.push(["Depuis", fmtDate(new Date(st.c * 1000), true)]);
     out.push(["Entité", tile.entity]);
     return out;
 }

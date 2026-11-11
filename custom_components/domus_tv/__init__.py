@@ -48,7 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass,
         frontend_url_path=PANEL_URL,
         webcomponent_name=PANEL_COMPONENT,
-        sidebar_title="TV Freebox",
+        sidebar_title="Domus TV",
         sidebar_icon="mdi:television-guide",
         module_url=f"{STATIC_URL}/panel.js?v={version}",
         require_admin=True,

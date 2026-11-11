@@ -2,7 +2,7 @@ import QtQuick 2.4
 import "../js/theme.js" as Theme
 import "../js/config.js" as Config
 
-// Shows a 6-digit code; an admin types it in Home Assistant → "TV Freebox" → Players.
+// Shows a 6-digit code; an admin types it in Home Assistant → "Domus TV" → Écrans.
 FocusScope {
     id: root
     property bool active: false
@@ -103,7 +103,7 @@ FocusScope {
             visible: root.status === "waiting"
             width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
             color: Theme.text2; font.pixelSize: 24; lineHeight: 1.3
-            text: "Dans Home Assistant, ouvrez <b>TV Freebox</b> → <b>Players</b>, et saisissez ce code."
+            text: "Dans Home Assistant, ouvrez <b>Domus TV</b> → <b>Écrans</b>, et saisissez ce code."
             textFormat: Text.StyledText
         }
         Text {

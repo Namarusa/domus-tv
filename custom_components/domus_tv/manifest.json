@@ -1,6 +1,6 @@
 {
   "domain": "domus_tv",
-  "name": "Domus TV (Freebox Player)",
+  "name": "Domus TV",
   "after_dependencies": [
     "recorder"
   ],
@@ -23,5 +23,5 @@
   "issue_tracker": "https://github.com/Namarusa/domus-tv/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.3.2"
+  "version": "0.4.0"
 }

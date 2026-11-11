@@ -1,4 +1,4 @@
-// Domus TV editor panel: design Freebox Player dashboards from Home Assistant.
+// Domus TV editor panel: design TV dashboards (Freebox, LG webOS…) from Home Assistant.
 import { SCREEN, cellSize, visibleRows, rowMetrics, tileRect, defaultType, defaultSize, effectiveType, pack } from "./layout.js";
 
 const TYPES = [
@@ -92,7 +92,7 @@ class DomusTvPanel extends HTMLElement {
       const res = await this._hass.callWS({ type: "domus_tv/config/save", dashboards: this._dashboards });
       this._dashboards = res.dashboards;
       this._saved = JSON.stringify(res.dashboards);
-      this._toast(`Enregistré (v${res.version}). Les Players se mettent à jour d'eux-mêmes.`);
+      this._toast(`Enregistré (v${res.version}). Les écrans se mettent à jour d'eux-mêmes.`);
     } catch (err) {
       this._toast("Erreur : " + (err.message || err.code), true);
     }
@@ -226,7 +226,7 @@ class DomusTvPanel extends HTMLElement {
   async _pair(code, name) {
     try {
       const tv = await this._hass.callWS({ type: "domus_tv/pair", code, name: name || undefined });
-      this._toast(`« ${tv.name} » est associé. Le Player affiche votre dashboard dans quelques secondes.`);
+      this._toast(`« ${tv.name} » est associé. L'écran affiche votre dashboard dans quelques secondes.`);
       this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
     } catch (err) {
       this._toast("Code inconnu ou expiré. Vérifiez le code affiché sur la TV.", true);
@@ -242,7 +242,7 @@ class DomusTvPanel extends HTMLElement {
   }
 
   async _rename(tv) {
-    const name = prompt("Nom du Player", tv.name);
+    const name = prompt("Nom de l'écran", tv.name);
     if (!name) return;
     await this._hass.callWS({ type: "domus_tv/tv/rename", tv_id: tv.id, name });
     this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
@@ -271,10 +271,10 @@ class DomusTvPanel extends HTMLElement {
     root.append(
       h("header", {},
         h("ha-menu-button", { ".hass": this._hass, ".narrow": this._narrow }),
-        h("div", { class: "title" }, "TV Freebox"),
+        h("div", { class: "title" }, "Domus TV"),
         h("nav", {},
           h("button", { class: this._view === "editor" ? "tab active" : "tab", onclick: () => { this._view = "editor"; this._render(); } }, "Dashboards"),
-          h("button", { class: this._view === "tvs" ? "tab active" : "tab", onclick: () => { this._view = "tvs"; this._render(); } }, `Players (${this._tvs.length})`),
+          h("button", { class: this._view === "tvs" ? "tab active" : "tab", onclick: () => { this._view = "tvs"; this._render(); } }, `Écrans (${this._tvs.length})`),
         ),
         h("div", { class: "spacer" }),
         this._msg ? h("div", { class: this._msgErr ? "msg err" : "msg" }, this._msg) : null,
@@ -476,9 +476,9 @@ class DomusTvPanel extends HTMLElement {
     const fmt = (s) => (s ? new Date(s * 1000).toLocaleString() : "jamais");
     return h("main", { class: "single" },
       h("section", { class: "card" },
-        h("h3", {}, "Associer un Freebox Player"),
+        h("h3", {}, "Associer une TV"),
         h("ol", {},
-          h("li", {}, "Installez l'app Domus sur le Player et ouvrez-la."),
+          h("li", {}, "Installez l'app Domus sur la TV ou le Freebox Player et ouvrez-la."),
           h("li", {}, "Saisissez l'adresse de Home Assistant avec la télécommande."),
           h("li", {}, "Recopiez ici le code à 6 chiffres affiché sur la TV.")),
         h("div", { class: "row" },
@@ -487,10 +487,10 @@ class DomusTvPanel extends HTMLElement {
           name = h("input", { placeholder: "Nom (ex. TV salon)", maxlength: "40" }),
           h("button", { class: "primary", onclick: () => this._pair(code.value, name.value) }, "Associer"),
         ),
-        h("p", { class: "hint" }, "Le Player reçoit un jeton d'accès longue durée lié à votre compte. Vous pouvez le retirer ici à tout moment."),
+        h("p", { class: "hint" }, "L'écran reçoit un jeton d'accès longue durée lié à votre compte. Vous pouvez le retirer ici à tout moment."),
       ),
       h("section", { class: "card" },
-        h("h3", {}, "Players associés"),
+        h("h3", {}, "Écrans associés"),
         this._tvs.length ? h("table", {},
           h("tr", {}, h("th", {}, "Nom"), h("th", {}, "Associé le"), h("th", {}, "Dernier contact"), h("th", {})),
           this._tvs.map((tv) => h("tr", {},
@@ -500,7 +500,7 @@ class DomusTvPanel extends HTMLElement {
             h("td", { class: "actions" },
               h("button", { onclick: () => this._rename(tv) }, "Renommer"),
               h("button", { class: "danger", onclick: () => this._revoke(tv) }, "Retirer")),
-          ))) : h("p", { class: "hint" }, "Aucun Player associé pour l'instant."),
+          ))) : h("p", { class: "hint" }, "Aucun écran associé pour l'instant."),
       ),
     );
   }
