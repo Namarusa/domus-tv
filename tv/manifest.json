@@ -1,8 +1,8 @@
 {
     "name": "Domus",
     "identifier": "fr.namarusaja.app.domus",
-    "description": "Vos tableaux de bord Home Assistant sur la TV",
-    "version": "1.1.0",
+    "description": "Vos dashboards Home Assistant sur la TV",
+    "version": "1.1.1",
     "capabilities": {
         "net_lan": "required",
         "net_wan": "optional"

@@ -207,8 +207,8 @@ class DomusTvPanel extends HTMLElement {
   }
 
   _removeDashboard() {
-    if (this._dashboards.length < 2) return this._toast("Il faut garder au moins un tableau.", true);
-    if (!confirm(`Supprimer le tableau « ${this._cur.title} » ?`)) return;
+    if (this._dashboards.length < 2) return this._toast("Il faut garder au moins un dashboard.", true);
+    if (!confirm(`Supprimer le dashboard « ${this._cur.title} » ?`)) return;
     this._dashboards.splice(this._dash, 1);
     this._dash = 0; this._sel = null;
     this._render();
@@ -226,7 +226,7 @@ class DomusTvPanel extends HTMLElement {
   async _pair(code, name) {
     try {
       const tv = await this._hass.callWS({ type: "domus_tv/pair", code, name: name || undefined });
-      this._toast(`« ${tv.name} » est associé. Le Player affiche votre tableau dans quelques secondes.`);
+      this._toast(`« ${tv.name} » est associé. Le Player affiche votre dashboard dans quelques secondes.`);
       this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
     } catch (err) {
       this._toast("Code inconnu ou expiré. Vérifiez le code affiché sur la TV.", true);
@@ -273,7 +273,7 @@ class DomusTvPanel extends HTMLElement {
         h("ha-menu-button", { ".hass": this._hass, ".narrow": this._narrow }),
         h("div", { class: "title" }, "TV Freebox"),
         h("nav", {},
-          h("button", { class: this._view === "editor" ? "tab active" : "tab", onclick: () => { this._view = "editor"; this._render(); } }, "Tableaux"),
+          h("button", { class: this._view === "editor" ? "tab active" : "tab", onclick: () => { this._view = "editor"; this._render(); } }, "Dashboards"),
           h("button", { class: this._view === "tvs" ? "tab active" : "tab", onclick: () => { this._view = "tvs"; this._render(); } }, `Players (${this._tvs.length})`),
         ),
         h("div", { class: "spacer" }),
@@ -297,11 +297,11 @@ class DomusTvPanel extends HTMLElement {
             class: i === this._dash ? "dash active" : "dash",
             onclick: () => { this._dash = i; this._sel = null; this._render(); },
           }, d.icon ? h("ha-icon", { icon: d.icon }) : null, `${i + 1}. ${d.title}`)),
-          h("button", { class: "dash add", onclick: () => this._addDashboard() }, "+ Tableau"),
+          h("button", { class: "dash add", onclick: () => this._addDashboard() }, "+ Dashboard"),
         ),
         this._renderPreview(dash),
         h("p", { class: "hint" },
-          "Glissez une tuile pour la déplacer. Sur la TV : flèches pour naviguer, OK pour agir, ⓘ pour les réglages fins, P+/P- ou chiffres pour changer de tableau. ",
+          "Glissez une tuile pour la déplacer. Sur la TV : flèches pour naviguer, OK pour agir, ⓘ pour les réglages fins, P+/P- ou chiffres pour changer de dashboard. ",
           "La ligne pointillée marque le bas de l'écran (le reste défile)."),
       ),
       h("aside", { class: "scroll" }, this._sel ? this._renderTileForm() : this._renderDashForm()),
@@ -361,7 +361,7 @@ class DomusTvPanel extends HTMLElement {
       tv.append(el);
     }
     if (!dash.tiles.length) {
-      tv.append(h("div", { class: "tvempty" }, "Tableau vide : ajoutez des tuiles ou une pièce entière à droite."));
+      tv.append(h("div", { class: "tvempty" }, "Dashboard vide : ajoutez des tuiles ou une pièce entière à droite."));
     }
     return tv;
   }
@@ -371,7 +371,7 @@ class DomusTvPanel extends HTMLElement {
     const areas = Object.values(this._hass.areas || {}).sort((a, b) => a.name.localeCompare(b.name));
     let areaSel;
     return h("div", { class: "form" },
-      h("h3", {}, "Tableau"),
+      h("h3", {}, "Dashboard"),
       h("label", {}, "Nom",
         h("input", { value: dash.title, maxlength: "30", oninput: (e) => { dash.title = e.target.value; }, onchange: () => this._render() })),
       h("label", {}, "Icône (facultatif, ex. mdi:sofa)",

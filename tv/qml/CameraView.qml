@@ -27,7 +27,7 @@ FocusScope {
     function runAction(id) {
         var st = app.states[id], p = Model.linkPrimary(id, st);
         if (p.ui === "camera") { open(cameras, id); return; }
-        if (p.ui === "details") { toast.show("Utilisez le panneau Info du tableau pour régler « " + Model.name({ entity: id }, st) + " »"); return; }
+        if (p.ui === "details") { toast.show("Utilisez le panneau Info du dashboard pour régler « " + Model.name({ entity: id }, st) + " »"); return; }
         if (p.ui === "confirm" && confirmEntity !== id) {
             confirmEntity = id;
             toast.show("Appuyez encore sur OK pour " + (st && st.s === "locked" ? "déverrouiller" : "verrouiller") + " « " + Model.name({ entity: id }, st) + " »");

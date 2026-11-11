@@ -176,7 +176,7 @@ FocusScope {
         visible: app.layout !== null && root.tiles.length === 0
         anchors.centerIn: parent
         spacing: 12
-        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Ce tableau est vide"; color: Theme.text; font.pixelSize: 30 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Ce dashboard est vide"; color: Theme.text; font.pixelSize: 30 }
         Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Ajoutez des tuiles dans Home Assistant → TV Freebox. Elles apparaîtront ici toutes seules."; color: Theme.text2; font.pixelSize: 20 }
     }
     Text {

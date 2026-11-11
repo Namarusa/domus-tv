@@ -250,7 +250,7 @@ def validate_dashboards(dashboards: Any) -> list[dict[str, Any]]:
             })
         out.append({
             "id": dash_id,
-            "title": _str(dash.get("title"), 30) or "Tableau",
+            "title": _str(dash.get("title"), 30) or "Dashboard",
             "icon": _str(dash.get("icon"), 80),
             "columns": columns,
             "tiles": tiles,
