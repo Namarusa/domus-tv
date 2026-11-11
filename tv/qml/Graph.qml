@@ -26,7 +26,9 @@ Canvas {
             if (pts[i] < lo) lo = pts[i];
             if (pts[i] > hi) hi = pts[i];
         }
-        if (first < 0 || n < 2) return;
+        var valid = 0;
+        for (i = 0; i < n; i++) if (pts[i] !== null && pts[i] !== undefined) valid++;
+        if (first < 0 || n < 2 || valid < 4) return;     // not enough history yet to draw a curve
         if (hi - lo < 1e-9) { hi += 1; lo -= 1; }
         var h = height - padTop - padBottom;
         function X(k) { return k * width / (n - 1); }

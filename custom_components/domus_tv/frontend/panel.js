@@ -313,7 +313,8 @@ class DomusTvPanel extends HTMLElement {
     const metrics = rowMetrics(dash.tiles, cols);
     const height = SCREEN.top + metrics.total + SCREEN.bottom;
     const fold = SCREEN.height;
-    const tv = h("div", { class: "tv", style: { aspectRatio: `${SCREEN.width} / ${Math.max(SCREEN.height, height)}` } });
+    const k = Math.max(0.65, Math.min(1.35, cellSize(cols).h / 136));
+    const tv = h("div", { class: "tv", style: { aspectRatio: `${SCREEN.width} / ${Math.max(SCREEN.height, height)}`, "--k": k.toFixed(3) } });
     const pct = (v, total) => `${(v / total) * 100}%`;
     const H = Math.max(SCREEN.height, height);
 
@@ -553,16 +554,16 @@ aside { border-left:1px solid var(--divider-color); background:var(--card-backgr
 .tvdots i.cur { background:#fff; }
 .fold { position:absolute; left:0; right:0; border-top:2px dashed rgba(255,255,255,.35); }
 .tvempty { position:absolute; inset:30% 10%; text-align:center; color:#8792a2; font-size:1.8cqw; }
-.tile { position:absolute; box-sizing:border-box; border-radius:1cqw; background:#1d2430; padding:1cqw 1.1cqw; cursor:pointer;
+.tile { position:absolute; box-sizing:border-box; border-radius:1cqw; background:#1d2430; padding:calc(1cqw * var(--k)) calc(1.1cqw * var(--k)); cursor:pointer;
   display:flex; flex-direction:column; overflow:hidden; border:2px solid transparent; --accent:#f5a623; transition:border-color .1s; }
 .tile:hover { border-color:rgba(255,255,255,.3); }
 .tile.sel { border-color:var(--primary-color); box-shadow:0 0 0 3px rgba(3,169,244,.35); }
 .tile.on .ic { color:var(--accent); }
-.tile .ic { color:#9aa5b5; } .tile .ic ha-icon, .tile .ic ha-state-icon { --mdc-icon-size:3cqw; }
-.tile .nm { margin-top:auto; font-size:1.25cqw; color:#c5ccd6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.tile .st { font-size:1.6cqw; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.tile.t-sensor .st { font-size:2.2cqw; }
-.tile .badge { position:absolute; top:.6cqw; right:.7cqw; font-size:1cqw; padding:.15cqw .5cqw; border-radius:1cqw; background:rgba(255,255,255,.14); color:#fff; }
+.tile .ic { color:#9aa5b5; } .tile .ic ha-icon, .tile .ic ha-state-icon { --mdc-icon-size:calc(2.7cqw * var(--k)); }
+.tile .nm { margin-top:auto; font-size:calc(1.25cqw * var(--k)); color:#c5ccd6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tile .st { font-size:calc(1.6cqw * var(--k)); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tile.t-sensor .st { font-size:calc(2cqw * var(--k)); }
+.tile .badge { position:absolute; top:calc(.6cqw * var(--k)); right:calc(.7cqw * var(--k)); font-size:calc(1cqw * var(--k)); padding:.15cqw .5cqw; border-radius:1cqw; background:rgba(255,255,255,.14); color:#fff; }
 .linkbox { display:flex; flex-direction:column; gap:6px; }
 .linkbox .lbl { font-size:13px; color:var(--secondary-text-color); }
 .linkbox .hint { margin:0; }
@@ -570,7 +571,7 @@ aside { border-left:1px solid var(--divider-color); background:var(--card-backgr
 .tile.t-header { background:none; padding:0 .3cqw; justify-content:flex-end; }
 .tile.t-header .hname { font-size:1.8cqw; font-weight:600; color:#fff; border-bottom:1px solid #2c3442; padding-bottom:.4cqw; }
 .tile.t-camera { padding:0; } .tile.t-camera img { width:100%; height:100%; object-fit:cover; }
-.tile .camname { position:absolute; left:0; right:0; bottom:0; padding:.6cqw 1cqw; font-size:1.2cqw; background:linear-gradient(transparent,rgba(0,0,0,.7)); }
+.tile .camname { position:absolute; left:0; right:0; bottom:0; padding:calc(.6cqw * var(--k)) calc(1cqw * var(--k)); font-size:calc(1.2cqw * var(--k)); background:linear-gradient(transparent,rgba(0,0,0,.7)); }
 .form { padding:16px 18px; display:flex; flex-direction:column; gap:12px; }
 .form h3 { margin:6px 0 0; font-size:15px; text-transform:uppercase; letter-spacing:.04em; color:var(--secondary-text-color); }
 label { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--secondary-text-color); flex:1; }

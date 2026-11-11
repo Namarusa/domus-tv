@@ -7,4 +7,4 @@ var STATE_POLL_MS = 2000;     // dashboard refresh
 var CAMERA_TILE_MS = 3000;    // camera tile refresh
 var CAMERA_FULL_MS = 1000;    // full-screen camera refresh
 var REQUEST_TIMEOUT_MS = 8000;
-var VERSION = "1.1.1";
+var VERSION = "1.1.2";

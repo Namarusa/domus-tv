@@ -128,7 +128,10 @@ var BINARY = {
     motion: ["Mouvement", "Calme"], occupancy: ["Occupé", "Libre"], presence: ["Présent", "Absent"],
     moisture: ["Humide", "Sec"], smoke: ["Fumée !", "OK"], gas: ["Gaz !", "OK"], problem: ["Problème", "OK"],
     battery: ["Faible", "OK"], connectivity: ["Connecté", "Déconnecté"], plug: ["Branché", "Débranché"],
-    lock: ["Déverrouillé", "Verrouillé"], running: ["En marche", "Arrêté"], vibration: ["Vibration", "Calme"]
+    lock: ["Déverrouillé", "Verrouillé"], running: ["En marche", "Arrêté"], vibration: ["Vibration", "Calme"],
+    power: ["Sous tension", "Hors tension"], light: ["Lumière", "Sombre"], heat: ["Chaud", "Normal"], cold: ["Froid", "Normal"],
+    sound: ["Son détecté", "Calme"], safety: ["Danger", "OK"], tamper: ["Sabotage", "OK"], update: ["Mise à jour", "À jour"],
+    carbon_monoxide: ["CO !", "OK"], moving: ["En mouvement", "Immobile"], garage_door_opening: ["Ouvert", "Fermé"]
 };
 
 function fmtNumber(v) {
@@ -212,6 +215,18 @@ function icon(tile, st) {
         case "smoke": return on ? "smoke-detector-alert" : "smoke-detector";
         case "battery": return on ? "battery-alert" : "battery";
         case "connectivity": return on ? "lan-connect" : "lan-disconnect";
+        case "plug": return on ? "power-plug" : "power-plug-off";
+        case "power": return on ? "flash" : "flash-off";
+        case "light": return on ? "brightness-7" : "brightness-5";
+        case "heat": return on ? "fire" : "thermometer";
+        case "cold": return on ? "snowflake" : "thermometer";
+        case "sound": return on ? "music-note" : "music-note-off";
+        case "safety": case "tamper": return on ? "shield-alert" : "shield-check";
+        case "update": return on ? "package-up" : "package";
+        case "running": return on ? "play" : "stop";
+        case "vibration": return on ? "vibrate" : "crop-portrait";
+        case "carbon_monoxide": case "gas": return on ? "alert" : "check-circle";
+        case "lock": return on ? "lock-open-variant" : "lock";
         default: return on ? "checkbox-marked-circle" : "checkbox-blank-circle-outline";
         }
     case "sensor":
