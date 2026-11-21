@@ -121,12 +121,12 @@ body { font-family: "LG Smart UI", "Samsung One", Roboto, "Segoe UI", Helvetica,
 .keyhint { position: absolute; left: 24px; right: 24px; bottom: 24px; text-align: center; font-size: 16px; color: #6b7585; }
 .menuhead { font-size: 30px; font-weight: 600; }
 .menuurl { font-size: 16px; color: #6b7585; margin: 10px 0 22px 0; }
-.mrow { position: relative; height: 56px; border-radius: 10px; margin-bottom: 10px; box-sizing: border-box; }
+.mrow { position: relative; height: 54px; border-radius: 10px; margin-bottom: 6px; box-sizing: border-box; }
 .mrow.sel { background: #2a3344; border: 3px solid #fff; }
-.mrow .mdi { position: absolute; left: 14px; top: 15px; font-size: 26px; color: #9aa5b5; }
-.mrow.sel .mdi { left: 11px; top: 12px; }
-.mrow .lbl { position: absolute; left: 54px; right: 10px; line-height: 56px; font-size: 21px; }
-.mrow.sel .lbl { left: 51px; line-height: 50px; }
+.mrow .mdi { position: absolute; left: 14px; top: 14px; font-size: 26px; color: #9aa5b5; }
+.mrow.sel .mdi { left: 11px; top: 11px; }
+.mrow .lbl { position: absolute; left: 54px; right: 10px; line-height: 54px; font-size: 21px; }
+.mrow.sel .lbl { left: 51px; line-height: 48px; }
 .mrow.cur .mdi { color: #f5a623; }
 .mrow.cur .lbl { font-weight: 600; }
 .mrow.danger .mdi, .mrow.danger .lbl { color: #e5534b; }

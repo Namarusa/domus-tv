@@ -77,6 +77,8 @@ FocusScope {
             else if (dir === "up") flick.contentY = 0;
             return;
         }
+        // No dashboard yet (Home Assistant unreachable): OK opens the menu to change the address or retry.
+        if ((k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Select) && app.layout === null) { menu.open(); return; }
         if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Select) { activate(); return; }
         if (k === Qt.Key_Info) { if (tiles[focusIndex]) details.open(tiles[focusIndex]); return; }
         if (k === Qt.Key_Menu || k === Qt.Key_Search) { menu.open(); return; }
@@ -84,9 +86,11 @@ FocusScope {
         if (k === Qt.Key_PageDown || k === Qt.Key_ChannelDown || k === Qt.Key_MediaPrevious) { switchDash(dashIndex - 1); return; }
         if (k >= Qt.Key_1 && k <= Qt.Key_9) { var i = k - Qt.Key_1; if (i < dashboards.length) switchDash(i); return; }
         if (k === Qt.Key_Back || k === Qt.Key_Escape) {
+            // While Home Assistant is unreachable, Back opens the menu (address, retry, quit).
+            if (!app.online || app.layout === null) { menu.open(); return; }
             if (exitArmed) Qt.quit();
             exitArmed = true; exitTimer.restart();
-            toast.show("Appuyez encore sur Retour pour quitter");
+            toast.show("Appuyez encore sur Retour pour quitter · Menu : réglages");
             return;
         }
         event.accepted = false;
@@ -179,11 +183,13 @@ FocusScope {
         Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Ce dashboard est vide"; color: Theme.text; font.pixelSize: 30 }
         Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Ajoutez des tuiles dans Home Assistant → Domus TV. Elles apparaîtront ici toutes seules."; color: Theme.text2; font.pixelSize: 20 }
     }
-    Text {
+    Column {
         visible: app.layout === null
         anchors.centerIn: parent
-        text: app.online ? "Chargement…" : "Connexion à Home Assistant…"
-        color: Theme.text2; font.pixelSize: 26
+        spacing: 14
+        Text { anchors.horizontalCenter: parent.horizontalCenter; text: app.online ? "Chargement…" : "Connexion à Home Assistant…"; color: Theme.text2; font.pixelSize: 26 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !app.online; text: settings.haUrl; color: Theme.text3; font.pixelSize: 20 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !app.online; text: "OK : changer d'adresse ou réessayer"; color: Theme.text; font.pixelSize: 20 }
     }
 
     // ---------------------------------------------------------------- overlays

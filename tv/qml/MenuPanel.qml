@@ -19,6 +19,7 @@ FocusScope {
         out.push({ label: "Recharger", icon: "refresh", cmd: "reload" });
         out.push({ label: "Changer d'adresse", icon: "server-network", cmd: "server" });
         out.push({ label: confirmForget ? "Confirmer : oublier ce Player" : "Oublier ce Player", icon: "link-off", cmd: "forget" });
+        out.push({ label: "Quitter Domus", icon: "exit-to-app", cmd: "quit" });
         return out;
     }
 
@@ -39,6 +40,7 @@ FocusScope {
             if (e.dash !== undefined) { close(); pick(e.dash); }
             else if (e.cmd === "reload") { close(); app.loadLayout(); }
             else if (e.cmd === "server") { close(); app.resetServer(); }
+            else if (e.cmd === "quit") Qt.quit();
             else if (e.cmd === "forget") {
                 if (!confirmForget) { confirmForget = true; return; }
                 close(); app.resetServer();
@@ -57,15 +59,30 @@ FocusScope {
         Rectangle { anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 1; color: Theme.line }
 
         Column {
-            anchors.fill: parent; anchors.margins: 28
+            id: head
+            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 28
             spacing: 10
             Text { text: app.layout && app.layout.home ? app.layout.home : "Domus"; color: Theme.text; font.pixelSize: 30; font.weight: Font.DemiBold }
             Text { text: settings.haUrl; color: Theme.text3; font.pixelSize: 16; width: parent.width; elide: Text.ElideMiddle }
-            Item { width: 1; height: 12 }
+        }
+        // Entries scroll when there are many dashboards, keeping the selection in view.
+        Flickable {
+            id: list
+            anchors.left: parent.left; anchors.right: parent.right; anchors.top: head.bottom; anchors.bottom: parent.bottom
+            anchors.leftMargin: 28; anchors.rightMargin: 28; anchors.topMargin: 20; anchors.bottomMargin: 52
+            clip: true; interactive: false
+            contentHeight: rows.height
+            property real rowH: 60
+            contentY: Math.max(0, Math.min(rows.height - height, (root.current + 1) * rowH - height + 8))
+            Behavior on contentY { NumberAnimation { duration: 120 } }
+          Column {
+            id: rows
+            width: parent.width
+            spacing: 6
             Repeater {
                 model: root.entries
                 Rectangle {
-                    width: parent.width; height: 56; radius: 10
+                    width: parent.width; height: 54; radius: 10
                     color: index === root.current ? Theme.tileFocus : "transparent"
                     border.width: index === root.current ? 3 : 0; border.color: Theme.focus
                     Icon {
@@ -82,6 +99,7 @@ FocusScope {
                     }
                 }
             }
+          }
         }
         Text {
             anchors.bottom: parent.bottom; anchors.bottomMargin: 20; anchors.left: parent.left; anchors.leftMargin: 28

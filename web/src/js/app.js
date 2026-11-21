@@ -505,7 +505,8 @@ var Dash = {
         el.innerHTML = h;
         var msg = $("dashmsg");
         if (msg) {
-            if (!app.layout) msg.innerHTML = '<div class="empty"><div style="font-size:26px;color:#9aa5b5">' + (app.online ? "Chargement…" : "Connexion à Home Assistant…") + "</div></div>";
+            if (!app.layout) msg.innerHTML = '<div class="empty"><div style="font-size:26px;color:#9aa5b5">' + (app.online ? "Chargement…" : "Connexion à Home Assistant…") + "</div>"
+                + (app.online ? "" : '<div style="font-size:20px;color:#6b7585;margin-top:14px">' + esc(app.haUrl) + '</div><div style="font-size:20px;margin-top:14px">OK : changer d\'adresse ou réessayer</div>') + "</div>";
             else if (!this.tiles.length) msg.innerHTML = '<div class="empty"><div style="font-size:30px">Ce dashboard est vide</div><div style="font-size:20px;color:#9aa5b5;margin-top:12px">Ajoutez des tuiles dans Home Assistant → Domus TV. Elles apparaîtront ici toutes seules.</div></div>';
             else msg.innerHTML = "";
         }
@@ -733,6 +734,7 @@ var Dash = {
             else if (k === "up") { this.contentY = 0; var g = $("grid"); if (g) { g.style.webkitTransform = ""; g.style.transform = ""; } }
             return;
         }
+        if (k === "ok" && !app.layout) { Menu.open(); return; }
         if (k === "ok") { this.activate(); return; }
         if (k === "info") { if (this.tiles[this.focusIndex]) Details.open(this.tiles[this.focusIndex]); return; }
         if (k === "menu") { Menu.open(); return; }
@@ -740,6 +742,7 @@ var Dash = {
         if (k === "chdown") { this.switchDash(app.dashIndex - 1); return; }
         if (k.charAt(0) === "d" && k !== "d0") { var i = +k.charAt(1) - 1; if (i < this.dashboards().length) this.switchDash(i); return; }
         if (k === "back") {
+            if (!app.online || !app.layout) { Menu.open(); return; }
             if (this.exitArmed) { exitApp(); return; }
             this.exitArmed = true;
             setTimeout(function () { self.exitArmed = false; }, 2500);
@@ -947,6 +950,7 @@ var Menu = {
         out.push({ label: "Recharger", icon: "refresh", cmd: "reload" });
         out.push({ label: "Changer d'adresse", icon: "server-network", cmd: "server" });
         out.push({ label: this.confirmForget ? "Confirmer : oublier cette TV" : "Oublier cette TV", icon: "link-off", cmd: "forget" });
+        out.push({ label: "Quitter Domus", icon: "exit-to-app", cmd: "quit" });
         return out;
     },
     key: function (k) {
@@ -962,6 +966,7 @@ var Menu = {
         if (e.dash !== undefined) { this.close(); Dash.switchDash(e.dash); }
         else if (e.cmd === "reload") { this.close(); app.historyCache = {}; loadLayout(); }
         else if (e.cmd === "server") { this.close(); resetServer(); }
+        else if (e.cmd === "quit") exitApp();
         else if (e.cmd === "forget") {
             if (!this.confirmForget) { this.current = i; this.confirmForget = true; this.render(); return; }
             this.close(); resetServer();
@@ -971,14 +976,19 @@ var Menu = {
         this.entries = this.build();
         var h = '<div class="dim"></div><div class="side l"><div style="position:absolute;left:28px;right:28px;top:28px">';
         h += '<div class="menuhead nowrap">' + esc(app.layout && app.layout.home ? app.layout.home : "Domus") + "</div>";
-        h += '<div class="menuurl nowrap">' + esc(app.haUrl) + "</div>";
+        h += '<div class="menuurl nowrap">' + esc(app.haUrl) + "</div></div>";
+        // entries scroll when there are many dashboards
+        var rowH = 60, listH = 720 - 140 - 52, total = this.entries.length * rowH;
+        var y = Math.max(0, Math.min(total - listH, (this.current + 1) * rowH - listH + 8));
+        h += '<div style="position:absolute;left:28px;right:28px;top:140px;height:' + listH + 'px;overflow:hidden">'
+            + '<div style="-webkit-transform:translateY(' + (-y) + 'px);transform:translateY(' + (-y) + 'px)">';
         for (var i = 0; i < this.entries.length; i++) {
             var e = this.entries[i];
             h += '<div class="mrow' + (i === this.current ? " sel" : "") + (e.dash === app.dashIndex ? " cur" : "")
                 + (e.cmd === "forget" && this.confirmForget ? " danger" : "") + '" data-m="' + i + '">' + icon(e.icon)
                 + '<div class="lbl nowrap">' + esc(e.label) + "</div></div>";
         }
-        h += '</div><div class="menufoot">Domus ' + esc(Config.VERSION) + " · « Oublier » ne retire pas l'accès dans HA</div></div>";
+        h += '</div></div><div class="menufoot">Domus ' + esc(Config.VERSION) + " · « Oublier » ne retire pas l'accès dans HA</div></div>";
         $("menu").innerHTML = h;
     }
 };
