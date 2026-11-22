@@ -1,6 +1,7 @@
 import QtQuick 2.4
 import "../js/theme.js" as Theme
 import "../js/config.js" as Config
+import "../js/i18n.js" as I18n
 
 // Menu key: pick a dashboard, reload, change server, forget this Player.
 FocusScope {
@@ -16,6 +17,7 @@ FocusScope {
         var out = [];
         for (var i = 0; i < dashboards.length; i++)
             out.push({ label: (i + 1) + ". " + dashboards[i].title, icon: dashboards[i].icon ? dashboards[i].icon.replace("mdi:", "") : "view-dashboard", dash: i });
+        out.push({ label: app.tr("menu.language"), icon: "translate", cmd: "lang" });
         out.push({ label: app.tr("menu.reload"), icon: "refresh", cmd: "reload" });
         out.push({ label: app.tr("menu.server"), icon: "server-network", cmd: "server" });
         out.push({ label: app.tr(confirmForget ? "menu.forgetConfirm" : "menu.forget", app.tr("this.player")), icon: "link-off", cmd: "forget" });
@@ -40,6 +42,7 @@ FocusScope {
             if (e.dash !== undefined) { close(); pick(e.dash); }
             else if (e.cmd === "reload") { close(); app.loadLayout(); }
             else if (e.cmd === "server") { close(); app.resetServer(); }
+            else if (e.cmd === "lang") app.setLanguage(I18n.nextLang());   // menu stays open, relabelled
             else if (e.cmd === "quit") Qt.quit();
             else if (e.cmd === "forget") {
                 if (!confirmForget) { confirmForget = true; return; }

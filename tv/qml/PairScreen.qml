@@ -31,7 +31,6 @@ FocusScope {
             if (!root.active) return;
             if (st === 200 && data && data.code) {
                 code = data.code; pollId = data.poll_id; home = data.home || "";
-                if (data.language) app.setLanguage(data.language);
                 console.log("Domus pairing code", code);
                 remaining = data.expires_in || 600;
                 status = "waiting";

@@ -17,7 +17,7 @@ Application {
     property int failures: 0
     property string notice: ""
     property var pending: []                // in-flight requests (for timeouts)
-    property string lang: "en"              // display language (from Home Assistant, else the Player's locale)
+    property string lang: "fr"              // display language: French by default, changed in the menu
 
     function setLanguage(l) {
         var n = I18n.setLang(l);
@@ -25,7 +25,10 @@ Application {
         if (n !== lang) { lang = n; statesRevision++; }
     }
     // Translated text. Reading `lang` makes bindings refresh when the language changes.
-    function tr(key, a, b) { return lang ? I18n.t(key, a, b) : key; }
+    function tr(key, a, b) {
+        if (I18n.lang() !== lang) I18n.setLang(lang);   // first texts can be drawn before boot()
+        return I18n.t(key, a, b);
+    }
 
     FontLoader { id: mdiFont; source: "fonts/materialdesignicons-webfont.ttf" }
     property string iconFont: mdiFont.name
@@ -46,7 +49,7 @@ Application {
     function boot() {
         if (screen !== "boot") return;
         if (!settings.haUrl) settings.haUrl = Config.DEFAULT_URL;
-        setLanguage(settings.lang || Qt.locale().name);
+        setLanguage(settings.lang || "fr");
         screen = settings.token ? "dash" : "setup";
         if (screen === "dash") loadLayout();
     }
@@ -99,7 +102,6 @@ Application {
     function loadLayout() {
         request("GET", "/api/domus_tv/layout", null, true, function(status, data) {
             if (status === 200 && data) {
-                if (data.language) setLanguage(data.language);
                 layout = data;
                 if (settings.dashIndex >= data.dashboards.length) settings.dashIndex = 0;
                 online = true; failures = 0;

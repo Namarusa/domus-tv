@@ -80,10 +80,11 @@ Unofficial project, not affiliated with Home Assistant, the Open Home Foundation
 
 ## Languages
 
-English and French. The Home Assistant pages follow each user's language; TVs and wall screens follow
-Home Assistant's language, or the one chosen in **Domus TV → Screens → Screen language**.
+English and French. The Home Assistant page follows the Home Assistant instance's language.
+The Freebox app starts in French, the LG app and wall screens in English; each screen can switch
+language from its menu (≡ or Menu key → Language), and remembers it.
 All screen text lives in `tv/js/i18n.js` (shared by every app): to add a language, copy the `en` block,
-translate it, and add the same keys to `STR` in `custom_components/domus_tv/frontend/panel.js`.
+translate it, add it to `LANGUAGES`, and add the same keys to `STR` in `custom_components/domus_tv/frontend/panel.js`.
 
 ## Wall screens and browsers
 

@@ -49,8 +49,8 @@ function param(name) {
     var m = new RegExp("[?&]" + name + "=([^&]*)").exec(window.location.search);
     return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
 }
-// Display language: Home Assistant's (sent with the layout and pairing), else this device's.
-I18n.setLang(store.get("lang", "") || navigator.language || "en");
+// Display language: English by default, changed in the menu (remembered on this screen).
+I18n.setLang(store.get("lang", "") || "en");
 function setLanguage(l) {
     var before = I18n.lang(), n = I18n.setLang(l);
     store.set("lang", n);
@@ -151,7 +151,6 @@ function loadLayout() {
     clearTimeout(retryLayoutTimer);
     request("GET", "/api/domus_tv/layout", null, true, function (status, data) {
         if (status === 200 && data) {
-            if (data.language) setLanguage(data.language);
             app.layout = data;
             if (app.dashIndex >= data.dashboards.length) setDash(0);
             app.online = true; app.failures = 0;
@@ -426,7 +425,6 @@ var Pair = {
             if (!self.active) return;
             if (st === 200 && data && data.code) {
                 self.code = data.code; self.pollId = data.poll_id; self.home = data.home || "";
-                if (data.language) setLanguage(data.language);
                 self.remaining = data.expires_in || 600;
                 self.status = "waiting";
                 self.pollTimer = setInterval(function () { self.poll(); }, 2000);
@@ -995,6 +993,7 @@ var Menu = {
         var out = [], ds = Dash.dashboards();
         for (var i = 0; i < ds.length; i++)
             out.push({ label: (i + 1) + ". " + ds[i].title, icon: ds[i].icon ? ds[i].icon.replace("mdi:", "") : "view-dashboard", dash: i });
+        out.push({ label: I18n.t("menu.language"), icon: "translate", cmd: "lang" });
         out.push({ label: I18n.t("menu.reload"), icon: "refresh", cmd: "reload" });
         if (!HOSTED) out.push({ label: I18n.t("menu.server"), icon: "server-network", cmd: "server" });
         out.push({ label: I18n.t(this.confirmForget ? "menu.forgetConfirm" : "menu.forget", thisScreen()), icon: "link-off", cmd: "forget" });
@@ -1014,6 +1013,7 @@ var Menu = {
         if (e.dash !== undefined) { this.close(); Dash.switchDash(e.dash); }
         else if (e.cmd === "reload") { this.close(); app.historyCache = {}; loadLayout(); }
         else if (e.cmd === "server") { this.close(); resetServer(); }
+        else if (e.cmd === "lang") { this.current = i; setLanguage(I18n.nextLang()); }
         else if (e.cmd === "quit") exitApp();
         else if (e.cmd === "forget") {
             if (!this.confirmForget) { this.current = i; this.confirmForget = true; this.render(); return; }

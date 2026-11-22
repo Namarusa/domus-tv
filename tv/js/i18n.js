@@ -21,7 +21,7 @@ en: {
     "device.wall": "Wall screen", "device.browser": "Browser",
     "pair.title": "Pair {0}",
     "pair.titleHome": "Pair {0} with “{1}”",
-    "pair.instructions": "In Home Assistant, open <b>Domus TV</b> → <b>Screens</b> and enter this code.",
+    "pair.instructions": "In Home Assistant, open <b>Domus TV</b>, second tab (<b>Screens</b>), and enter this code.",
     "pair.waiting": "Waiting… code valid for {0} min {1} s",
     "pair.connecting": "Connecting to {0}…",
     "pair.hint": "Back: change address · OK: new code",
@@ -71,6 +71,7 @@ en: {
     "menu.forget": "Forget {0}",
     "menu.forgetConfirm": "Confirm: forget {0}",
     "menu.quit": "Quit Domus",
+    "menu.language": "Language: English",
     "menu.footer": "“Forget” does not revoke access in HA",
 
     // state text
@@ -127,7 +128,7 @@ fr: {
     "device.wall": "Écran mural", "device.browser": "Navigateur",
     "pair.title": "Associer {0}",
     "pair.titleHome": "Associer {0} à « {1} »",
-    "pair.instructions": "Dans Home Assistant, ouvrez <b>Domus TV</b> → <b>Écrans</b>, et saisissez ce code.",
+    "pair.instructions": "Dans Home Assistant, ouvrez <b>Domus TV</b>, 2e onglet (<b>Écrans</b>), et saisissez ce code.",
     "pair.waiting": "En attente… code valable encore {0} min {1} s",
     "pair.connecting": "Connexion à {0}…",
     "pair.hint": "Retour : changer l'adresse · OK : nouveau code",
@@ -173,6 +174,7 @@ fr: {
     "menu.forget": "Oublier {0}",
     "menu.forgetConfirm": "Confirmer : oublier {0}",
     "menu.quit": "Quitter Domus",
+    "menu.language": "Langue : Français",
     "menu.footer": "« Oublier » ne retire pas l'accès dans HA",
 
     "state.lightOn": "Allumé · {0} %",
@@ -220,6 +222,9 @@ function normalize(lang) {
     return STRINGS[l] ? l : "en";
 }
 function setLang(lang) { LANG = normalize(lang); return LANG; }
+// Languages offered in the screens' menu, and the one after the current (menu toggles through them).
+var LANGUAGES = ["en", "fr"];
+function nextLang() { var i = LANGUAGES.indexOf(LANG); return LANGUAGES[(i + 1) % LANGUAGES.length]; }
 function lang() { return LANG; }
 
 function table() { return STRINGS[LANG] || STRINGS.en; }

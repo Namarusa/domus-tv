@@ -3,7 +3,7 @@ import { SCREEN, cellSize, visibleRows, rowMetrics, tileRect, defaultType, defau
 
 const TYPE_IDS = ["auto", "toggle", "light", "button", "sensor", "cover", "climate", "camera", "lock", "media", "header"];
 const typeLabel = (id) => T("type." + id);
-// ---- translations (panel follows the Home Assistant user's language; English fallback)
+// ---- translations (panel follows the Home Assistant instance's language; English fallback)
 const STR = {
  "en": {
   "type.auto": "Automatic",
@@ -100,10 +100,6 @@ const STR = {
   "help.lock": "OK locks/unlocks (confirmation asked on the screen).",
   "help.media": "OK play/pause. ⓘ: track, volume.",
   "help.header": "A title to separate groups of tiles.",
-  "lang.title": "Screen language",
-  "lang.auto": "Home Assistant's language ({0})",
-  "lang.hint": "Language of the TVs and wall screens. Screens switch language at their next refresh.",
-  "lang.saved": "Screen language saved."
  },
  "fr": {
   "type.auto": "Automatique",
@@ -200,13 +196,8 @@ const STR = {
   "help.lock": "OK verrouille/déverrouille (confirmation demandée sur la TV).",
   "help.media": "OK lecture/pause. ⓘ : piste, volume.",
   "help.header": "Un titre pour séparer les groupes de tuiles.",
-  "lang.title": "Langue des écrans",
-  "lang.auto": "Langue de Home Assistant ({0})",
-  "lang.hint": "Langue des TV et écrans muraux. Les écrans changent de langue au prochain rafraîchissement.",
-  "lang.saved": "Langue des écrans enregistrée."
  }
 };
-const SCREEN_LANGS = [["en", "English"], ["fr", "Français"]];
 let LANG = "en";
 function setPanelLang(l) { const n = String(l || "en").toLowerCase().split(/[-_]/)[0]; LANG = STR[n] ? n : "en"; return LANG; }
 function T(k, ...args) {
@@ -260,7 +251,8 @@ class DomusTvPanel extends HTMLElement {
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
-    const lang = setPanelLang((hass.locale && hass.locale.language) || hass.language);
+    // The panel follows the Home Assistant instance's language.
+    const lang = setPanelLang((hass.config && hass.config.language) || hass.language);
     if (!first && lang !== this._lang && this._dashboards) { this._lang = lang; this._render(); return; }
     this._lang = lang;
     if (first) this._load();
@@ -292,7 +284,6 @@ class DomusTvPanel extends HTMLElement {
       const res = await this._hass.callWS({ type: "domus_tv/config/get" });
       this._dashboards = res.dashboards;
       this._saved = JSON.stringify(res.dashboards);
-      this._screenLang = res.language || "auto";
       this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
     } catch (err) {
       this._msg = T("msg.loadFailed", err.message || err.code);
@@ -448,17 +439,6 @@ class DomusTvPanel extends HTMLElement {
       this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
     } catch (err) {
       this._toast(T("msg.badCode"), true);
-    }
-    this._render();
-  }
-
-  async _setScreenLang(language) {
-    try {
-      const res = await this._hass.callWS({ type: "domus_tv/language/set", language });
-      this._screenLang = res.language;
-      this._toast(T("lang.saved"));
-    } catch (err) {
-      this._toast(T("msg.error", err.message || err.code), true);
     }
     this._render();
   }
@@ -722,13 +702,6 @@ class DomusTvPanel extends HTMLElement {
         h("p", {}, T("wall.text")),
         h("p", {}, h("a", { href: `${location.origin}/domus_tv/screen`, target: "_blank", class: "screenurl" }, `${location.origin}/domus_tv/screen`)),
         h("p", { class: "hint" }, T("wall.hint")),
-      ),
-      h("section", { class: "card" },
-        h("h3", {}, T("lang.title")),
-        h("select", { class: "langsel", onchange: (e) => this._setScreenLang(e.target.value) },
-          [["auto", T("lang.auto", (this._hass.config && this._hass.config.language) || "en")], ...SCREEN_LANGS].map(([v, l]) =>
-            h("option", { value: v, selected: v === (this._screenLang || "auto") }, l))),
-        h("p", { class: "hint" }, T("lang.hint")),
       ),
       h("section", { class: "card" },
         h("h3", {}, T("tvs.title")),
