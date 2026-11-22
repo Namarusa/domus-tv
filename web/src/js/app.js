@@ -41,7 +41,18 @@ var platform = (function () {
     if (/Android/i.test(ua)) return "android";
     return "browser";
 })();
-var DEVICE_NAME = { webos: "TV LG", tizen: "TV Samsung", android: "Android TV", browser: "Navigateur" }[platform];
+// Served by Home Assistant at /domus_tv/screen (wall screens, browsers): no address to type.
+var HOSTED = !!window.DOMUS_HOSTED;
+// Pointer devices (touch screens, mouse, LG Magic Remote) get on-screen buttons.
+var POINTER = HOSTED || platform === "browser" || platform === "webos";
+function param(name) {
+    var m = new RegExp("[?&]" + name + "=([^&]*)").exec(window.location.search);
+    return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
+}
+var THIS_SCREEN = HOSTED || platform === "browser" ? "cet écran" : "cette TV";
+var DEVICE_NAME = param("name") || (HOSTED ? "Écran mural"
+    : { webos: "TV LG", tizen: "TV Samsung", android: "Android TV", browser: "Navigateur" }[platform]);
+if (POINTER) document.documentElement.className += " pointer";
 
 if (platform === "tizen") {
     try {
@@ -85,7 +96,7 @@ var app = {
     online: true,
     failures: 0,
     notice: "",
-    haUrl: store.get("haUrl", "") || Config.DEFAULT_URL,
+    haUrl: HOSTED ? window.location.protocol + "//" + window.location.host : (store.get("haUrl", "") || Config.DEFAULT_URL),
     token: store.get("token", ""),
     tvId: store.get("tvId", ""),
     dashIndex: store.get("dashIndex", 0),
@@ -121,7 +132,7 @@ function request(method, path, body, auth, cb) {
 function tokenRejected() {
     app.token = ""; store.set("token", "");
     app.layout = null;
-    app.notice = "Home Assistant a refusé l'accès (TV retirée ?). Associez-la à nouveau.";
+    app.notice = "Home Assistant a refusé l'accès (écran retiré ?). Associez-le à nouveau.";
     show("pair");
 }
 
@@ -205,7 +216,7 @@ function setDash(i) { app.dashIndex = i; store.set("dashIndex", i); }
 function resetServer() {
     app.token = ""; store.set("token", "");
     app.layout = null; app.states = {};
-    show("setup");
+    show(HOSTED ? "pair" : "setup");
 }
 
 // ====================================================================== graph
@@ -435,7 +446,7 @@ var Pair = {
         });
     },
     key: function (k) {
-        if (k === "back" || k === "left") show("setup");
+        if ((k === "back" || k === "left") && !HOSTED) show("setup");
         else if (k === "ok") this.start();
     },
     countText: function () {
@@ -445,7 +456,7 @@ var Pair = {
     renderCount: function () { var el = $("pair-count"); if (el) el.textContent = this.countText(); },
     render: function () {
         var h = '<div class="col w1000">';
-        h += '<div class="pair-title">' + esc(this.home ? "Associer cette TV à « " + this.home + " »" : "Associer cette TV") + "</div>";
+        h += '<div class="pair-title">' + esc(this.home ? "Associer " + THIS_SCREEN + " à « " + this.home + " »" : "Associer " + THIS_SCREEN) + "</div>";
         if (app.notice) h += '<div class="sub warn w1000">' + esc(app.notice) + "</div>";
         if (this.status === "waiting") {
             h += '<div class="digits">';
@@ -458,7 +469,7 @@ var Pair = {
         } else {
             h += '<div class="sub err w1000">' + esc(this.message) + "</div>";
         }
-        h += '<div class="hint" style="font-size:18px">Retour : changer l\'adresse · OK : nouveau code</div>';
+        h += '<div class="hint" style="font-size:18px">' + (HOSTED ? "Touchez l'écran pour un nouveau code" : "Retour : changer l'adresse · OK : nouveau code") + "</div>";
         h += "</div>";
         $("pair").innerHTML = h;
     }
@@ -495,13 +506,15 @@ var Dash = {
         h += '<span class="title">' + esc(d ? d.title : "") + "</span>";
         if (ds.length > 1) {
             h += "<span>";
-            for (var i = 0; i < ds.length; i++) h += '<span class="dot' + (i === app.dashIndex ? " on" : "") + '"></span>';
+            for (var i = 0; i < ds.length; i++) h += '<span class="dot' + (i === app.dashIndex ? " on" : "") + '" data-dash="' + i + '"></span>';
             h += "</span>";
         }
         h += '</div><div class="right">';
         if (!app.online) h += '<span class="offline">' + icon("lan-disconnect") + "Home Assistant injoignable</span>";
         var t = new Date();
-        h += '<span class="clock">' + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + "</span></div>";
+        h += '<span class="clock">' + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + "</span>";
+        if (POINTER) h += '<span class="menubtn" data-cmd="menu">' + icon("menu") + "</span>";
+        h += "</div>";
         el.innerHTML = h;
         var msg = $("dashmsg");
         if (msg) {
@@ -692,6 +705,14 @@ var Dash = {
         if (g) { g.style.webkitTransform = "translateY(" + (-this.contentY) + "px)"; g.style.transform = "translateY(" + (-this.contentY) + "px)"; }
     },
 
+    scrollBy: function (dy) {
+        if (!this.metrics) return;
+        var viewH = 720 - Model.SCREEN.top, contentH = this.metrics.total + Model.SCREEN.bottom + 2 * TOP_PAD;
+        this.contentY = Math.max(0, Math.min(Math.max(0, contentH - viewH), this.contentY + dy));
+        var g = $("grid");
+        if (g) { g.style.webkitTransform = "translateY(" + (-this.contentY) + "px)"; g.style.transform = "translateY(" + (-this.contentY) + "px)"; }
+    },
+
     switchDash: function (i) {
         var ds = this.dashboards();
         if (!ds.length) return;
@@ -804,7 +825,7 @@ var Details = {
         this.rows = Model.detailRows(t, st).concat(Model.linkRows(t));
         if (this.current >= this.rows.length) this.current = Math.max(0, this.rows.length - 1);
         var color = Model.isOn(st) ? (t.color || Theme.accent) : Theme.text2;
-        var h = '<div class="dim"></div><div class="side r"><div class="scroller"><div class="content">';
+        var h = '<div class="dim"></div><div class="side r">' + (POINTER ? '<span class="closebtn" data-close="1">' + icon("close") + "</span>" : "") + '<div class="scroller"><div class="content">';
         h += '<div class="dhead"><i class="mdi" style="color:' + esc(color) + '">' + Mdi.glyph(Model.icon(t, st)) + "</i>";
         h += '<div class="t nowrap">' + esc(Model.name(t, st)) + '</div><div class="s nowrap">' + esc(Model.stateText(t, st)) + "</div></div>";
         for (var i = 0; i < this.rows.length; i++) {
@@ -817,7 +838,7 @@ var Details = {
                 h += '<div class="val nowrap" style="width:120px">' + esc(this.confirmEntity === r.entity ? "OK pour confirmer" : Model.stateText(ln, lst)) + "</div></div>";
             } else {
                 h += '<div class="row' + sel + '" data-row="' + i + '">' + icon(r.icon || "") + '<div class="lbl nowrap" style="width:220px">' + esc(r.label) + "</div>";
-                if (r.kind === "stepper") h += '<div class="step">' + icon("chevron-left") + "<span>" + esc(r.value || "") + "</span>" + icon("chevron-right") + "</div>";
+                if (r.kind === "stepper") h += '<div class="step"><span class="hit" data-step="-1">' + icon("chevron-left") + "</span><span>" + esc(r.value || "") + '</span><span class="hit" data-step="1">' + icon("chevron-right") + "</span></div>";
                 h += "</div>";
             }
         }
@@ -834,7 +855,7 @@ var Details = {
         var info = Model.infoLines(t, st);
         for (var j = 0; j < info.length; j++)
             h += '<div class="info"><span class="k">' + esc(info[j][0]) + '</span><span class="v">' + esc(info[j][1]) + "</span></div>";
-        h += '</div></div><div class="keyhint">' + (this.rows.length ? "Haut/Bas : choisir · OK ou Gauche/Droite : agir · Retour : fermer" : "Retour pour fermer") + "</div></div>";
+        h += '</div></div><div class="keyhint">' + (HOSTED ? "Touchez une ligne pour agir" : this.rows.length ? "Haut/Bas : choisir · OK ou Gauche/Droite : agir · Retour : fermer" : "Retour pour fermer") + "</div></div>";
         var el = $("details");
         el.innerHTML = h;
         if (numeric && this.hist) drawGraph($("dhist"), this.hist.points, t.color || Theme.accent, 2.5, 0.18);
@@ -948,9 +969,9 @@ var Menu = {
         for (var i = 0; i < ds.length; i++)
             out.push({ label: (i + 1) + ". " + ds[i].title, icon: ds[i].icon ? ds[i].icon.replace("mdi:", "") : "view-dashboard", dash: i });
         out.push({ label: "Recharger", icon: "refresh", cmd: "reload" });
-        out.push({ label: "Changer d'adresse", icon: "server-network", cmd: "server" });
-        out.push({ label: this.confirmForget ? "Confirmer : oublier cette TV" : "Oublier cette TV", icon: "link-off", cmd: "forget" });
-        out.push({ label: "Quitter Domus", icon: "exit-to-app", cmd: "quit" });
+        if (!HOSTED) out.push({ label: "Changer d'adresse", icon: "server-network", cmd: "server" });
+        out.push({ label: this.confirmForget ? "Confirmer : oublier " + THIS_SCREEN : "Oublier " + THIS_SCREEN, icon: "link-off", cmd: "forget" });
+        if (!HOSTED && platform !== "browser") out.push({ label: "Quitter Domus", icon: "exit-to-app", cmd: "quit" });
         return out;
     },
     key: function (k) {
@@ -1047,22 +1068,68 @@ document.addEventListener("mouseover", function (e) {
         if (i !== Dash.focusIndex && Model.effectiveType(Dash.tiles[i]) !== "header") Dash.focus(i);
     }
 });
+// Touch: a long press on a tile opens its details; dragging scrolls the dashboard.
+var press = { timer: null, y: 0, lastY: 0, moved: false, long: false };
+function pressStart(y, target) {
+    press.y = press.lastY = y; press.moved = false; press.long = false;
+    clearTimeout(press.timer);
+    if (stack.length || app.screen !== "dash") return;
+    var t = closest(target, "data-i");
+    if (!t) return;
+    press.timer = setTimeout(function () {
+        if (press.moved) return;
+        var i = +t.getAttribute("data-i");
+        if (Model.effectiveType(Dash.tiles[i]) === "header") return;
+        press.long = true;
+        Dash.focus(i);
+        Details.open(Dash.tiles[i]);
+    }, 550);
+}
+function pressMove(y) {
+    if (Math.abs(y - press.y) > 12) { press.moved = true; clearTimeout(press.timer); }
+    if (press.moved && !stack.length && app.screen === "dash") Dash.scrollBy((press.lastY - y) / stageScale);
+    press.lastY = y;
+}
+function pressEnd() { clearTimeout(press.timer); }
+document.addEventListener("touchstart", function (e) { pressStart(e.touches[0].clientY, e.target); }, { passive: true });
+document.addEventListener("touchmove", function (e) { pressMove(e.touches[0].clientY); }, { passive: true });
+document.addEventListener("touchend", pressEnd);
+var mouseDown = false;
+document.addEventListener("mousedown", function (e) { mouseDown = true; pressStart(e.clientY, e.target); });
+document.addEventListener("mousemove", function (e) { if (mouseDown) pressMove(e.clientY); });
+document.addEventListener("mouseup", function () { mouseDown = false; pressEnd(); });
+document.addEventListener("wheel", function (e) { if (!stack.length && app.screen === "dash") Dash.scrollBy(e.deltaY); });
+document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
 document.addEventListener("click", function (e) {
     var t;
+    if (press.long || press.moved) { press.long = false; press.moved = false; return; }
     if (stack.length) {
         var top = stack[stack.length - 1];
-        if (top === Details) { if ((t = closest(e.target, "data-row"))) { Details.current = +t.getAttribute("data-row"); Details.act("ok"); } else if (!closest(e.target, "class") || e.target.className === "dim") Details.close(); }
+        if (top === Details) {
+            if ((t = closest(e.target, "data-step"))) {
+                var row = closest(t, "data-row");
+                Details.current = +row.getAttribute("data-row");
+                Details.act(+t.getAttribute("data-step") > 0 ? "right" : "left");
+            }
+            else if ((t = closest(e.target, "data-row"))) { Details.current = +t.getAttribute("data-row"); Details.act("ok"); }
+            else if (e.target.className === "dim" || closest(e.target, "data-close")) Details.close();
+        }
         else if (top === Menu) { if ((t = closest(e.target, "data-m"))) Menu.pick(+t.getAttribute("data-m")); else if (e.target.className === "dim") Menu.close(); }
         else if (top === Camera) { if ((t = closest(e.target, "data-act"))) { Camera.action = +t.getAttribute("data-act"); Camera.key("ok"); } else Camera.close(); }
         return;
     }
-    if (app.screen === "dash" && (t = closest(e.target, "data-i"))) {
-        var i = +t.getAttribute("data-i");
-        if (Model.effectiveType(Dash.tiles[i]) === "header") return;
-        Dash.focus(i); Dash.activate();
+    if (app.screen === "dash") {
+        if (closest(e.target, "data-cmd")) { Menu.open(); return; }
+        if ((t = closest(e.target, "data-dash"))) { Dash.switchDash(+t.getAttribute("data-dash")); return; }
+        if ((t = closest(e.target, "data-i"))) {
+            var i = +t.getAttribute("data-i");
+            if (Model.effectiveType(Dash.tiles[i]) === "header") return;
+            Dash.focus(i); Dash.activate();
+        }
     } else if (app.screen === "setup" && (t = closest(e.target, "data-seg"))) {
-        var s = t.getAttribute("data-seg");
-        Setup.click(s === "go" ? "go" : +s);
+        var sg = t.getAttribute("data-seg");
+        Setup.click(sg === "go" ? "go" : +sg);
     } else if (app.screen === "pair") Pair.start();
 });
 
@@ -1087,7 +1154,8 @@ document.addEventListener("visibilitychange", function () {
 });
 
 resize();
-show(app.token ? "dash" : "setup");
+if (param("dash")) { var dn = parseInt(param("dash"), 10); if (dn > 0) setDash(dn - 1); }
+show(app.token ? "dash" : (HOSTED ? "pair" : "setup"));
 
 // test hook
 window.DomusDebug = { app: app, show: show, Dash: Dash, Details: Details, Camera: Camera, Menu: Menu };

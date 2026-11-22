@@ -7,6 +7,8 @@ STORAGE_VERSION = 1
 PANEL_URL = "domus-tv"
 PANEL_COMPONENT = "domus-tv-panel"
 STATIC_URL = "/domus_tv_static"
+APP_STATIC_URL = "/domus_tv_app"   # web client files (wall screens, browsers)
+SCREEN_URL = "/domus_tv/screen"    # page to open on a wall screen
 
 PAIR_CODE_TTL = 600  # seconds a pairing code stays valid
 PAIR_MAX_PENDING = 5

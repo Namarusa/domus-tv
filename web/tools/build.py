@@ -5,6 +5,7 @@ Wraps the Freebox app's shared JS (tv/js/model.js, mdi.js, theme.js) into browse
 namespaces (Model, Mdi, Theme), copies the icon font, and assembles:
   web/dist/www      plain web app (open index.html in a browser to test)
   web/dist/webos    LG webOS app folder (+ .ipk if ares-package is installed)
+  custom_components/domus_tv/app   copy served by Home Assistant at /domus_tv/screen
 
 Usage: python3 web/tools/build.py [--url http://192.168.1.10:8123] [--ipk]
 """
@@ -67,11 +68,21 @@ def build_webos(www, ipk):
     return out
 
 
+def build_ha():
+    """Copy of the web client shipped inside the integration (generic defaults)."""
+    out = os.path.join(ROOT, "custom_components", "domus_tv", "app")
+    tmp = build_www("")
+    shutil.rmtree(out, ignore_errors=True)
+    shutil.copytree(tmp, out)
+    return out
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default="")
     ap.add_argument("--ipk", action="store_true")
     a = ap.parse_args()
+    print("ha   ->", build_ha())
     www = build_www(a.url)
     print("www  ->", www)
     print("webos ->", build_webos(www, a.ipk))

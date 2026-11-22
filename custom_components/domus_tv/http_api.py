@@ -6,6 +6,7 @@ import logging
 import time
 from datetime import timedelta
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any
 
 from aiohttp import web
@@ -15,14 +16,14 @@ from homeassistant.components.http import KEY_HASS_REFRESH_TOKEN_ID, KEY_HASS_US
 from homeassistant.core import Context, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import COMMON_ATTRIBUTES, DOMAIN, FORWARDED_ATTRIBUTES
+from .const import APP_STATIC_URL, COMMON_ATTRIBUTES, DOMAIN, FORWARDED_ATTRIBUTES, SCREEN_URL
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @callback
 def async_register_views(hass: HomeAssistant) -> None:
-    for view in (PairStartView, PairPollView, LayoutView, StatesView, ActionView, HistoryView):
+    for view in (PairStartView, PairPollView, LayoutView, StatesView, ActionView, HistoryView, ScreenView):
         hass.http.register_view(view(hass))
 
 
@@ -320,3 +321,29 @@ class HistoryView(_Base):
             "max": max(values) if values else None,
             "unit": state.attributes.get("unit_of_measurement") if state else None,
         })
+
+
+class ScreenView(HomeAssistantView):
+    """The web client for wall screens and browsers: http://<ha>:8123/domus_tv/screen.
+
+    Public like any web page; it holds no data. The screen still has to be paired
+    with a code before it can read or control anything.
+    """
+
+    url = SCREEN_URL
+    name = "domus_tv:screen"
+    requires_auth = False
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+
+    async def get(self, request: web.Request) -> web.Response:
+        index = Path(__file__).parent / "app" / "index.html"
+        html = await self.hass.async_add_executor_job(index.read_text, "utf-8")
+        # Files load from the static path; the page knows it is hosted by HA.
+        html = html.replace(
+            "<head>",
+            '<head>\n<base href="%s/">\n<script>window.DOMUS_HOSTED = true;</script>' % APP_STATIC_URL,
+            1,
+        )
+        return web.Response(text=html, content_type="text/html", headers={"Cache-Control": "no-cache"})

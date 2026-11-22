@@ -78,6 +78,14 @@ The Player must reach Home Assistant at a non-`10.0.0.x` address: the Player use
 
 Unofficial project, not affiliated with Home Assistant, the Open Home Foundation or Free. Icons: Material Design Icons (Apache 2.0).
 
+## Wall screens and browsers
+
+Home Assistant serves the same app at **`http://<your-HA>:8123/domus_tv/screen`**. Open it on a wall tablet
+(full screen, e.g. Fully Kiosk Browser) and pair it with the code shown, like a TV.
+Options: `?dash=2` opens the 2nd dashboard, `&name=Cuisine` names the screen.
+Tap a tile to act, long-press for details, swipe to scroll, ≡ for the menu.
+`web/tools/build.py` refreshes the copy shipped in `custom_components/domus_tv/app/`.
+
 ## LG webOS TV (beta)
 
 The web client in `web/` is the same app as the Freebox one (same dashboards, pairing, cameras, linked actions).

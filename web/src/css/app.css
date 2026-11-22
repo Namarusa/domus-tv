@@ -160,3 +160,15 @@ body { font-family: "LG Smart UI", "Samsung One", Roboto, "Segoe UI", Helvetica,
          text-align: center; opacity: 0; z-index: 100; -webkit-transition: opacity 0.2s; transition: opacity 0.2s; pointer-events: none; }
 #toast.show { opacity: 1; }
 #toast.error { background: #e5534b; }
+
+/* ---------------------------------------------------------------- pointer / touch */
+.menubtn { display: inline-block; width: 52px; height: 52px; line-height: 52px; text-align: center; border-radius: 26px;
+           margin-left: 18px; vertical-align: middle; background: #1d2430; cursor: pointer; }
+.menubtn .mdi { font-size: 30px; color: #e8ecf2; vertical-align: middle; }
+.pointer #bar .dot { width: 14px; height: 14px; border-radius: 7px; margin-right: 12px; cursor: pointer; }
+.closebtn { position: absolute; right: 20px; top: 20px; width: 48px; height: 48px; line-height: 48px; text-align: center;
+            border-radius: 24px; background: #1d2430; z-index: 2; cursor: pointer; }
+.closebtn .mdi { font-size: 28px; color: #9aa5b5; vertical-align: middle; }
+.pointer .dhead { margin-right: 56px; }
+.row .step .hit { display: inline-block; padding: 0 6px; cursor: pointer; }
+.pointer .tile, .pointer .row, .pointer .mrow, .pointer .act { cursor: pointer; }

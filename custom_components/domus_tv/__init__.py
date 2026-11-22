@@ -1,10 +1,11 @@
-"""Domus TV: design Home Assistant dashboards for the Freebox Player app.
+"""Domus TV: design Home Assistant dashboards for TVs and wall screens.
 
 The integration provides:
 * a sidebar panel (admin only) to design TV dashboards and pair Players;
 * durable storage of the dashboards in .storage/domus_tv;
 * a pairing flow so the Player never needs a typed token;
-* light REST endpoints the Player polls (layout + states of used entities).
+* light REST endpoints the Player polls (layout + states of used entities);
+* the web client itself at /domus_tv/screen, for wall screens and browsers.
 """
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, PANEL_COMPONENT, PANEL_URL, STATIC_URL
+from .const import APP_STATIC_URL, DOMAIN, PANEL_COMPONENT, PANEL_URL, STATIC_URL
 from .http_api import async_register_views
 from .store import DomusData
 from .websocket import async_register_commands
@@ -25,6 +26,7 @@ from .websocket import async_register_commands
 _LOGGER = logging.getLogger(__name__)
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
+APP_DIR = Path(__file__).parent / "app"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -37,7 +39,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # register them once per Home Assistant run.
     if not hass.data.get(f"{DOMAIN}_registered"):
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False)]
+            [
+                StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False),
+                StaticPathConfig(APP_STATIC_URL, str(APP_DIR), cache_headers=False),
+            ]
         )
         async_register_views(hass)
         async_register_commands(hass)
