@@ -58,6 +58,11 @@ class DomusTvPanel extends HTMLElement {
   set panel(v) { this._panel = v; }
 
   connectedCallback() {
+    // /domus-tv/screen (hyphen: this panel) is easily typed for the wall-screen page /domus_tv/screen.
+    if (/^\/domus-tv\/screen/.test(location.pathname)) {
+      location.replace("/domus_tv/screen" + location.search);
+      return;
+    }
     this._onKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); this._save(); }
     };
