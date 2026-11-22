@@ -882,6 +882,18 @@ var Details = {
     close: function () { this.tile = null; closeOverlay(this); },
     update: function () { if (this.tile) this.render(); },
 
+    // Move the panel content without redrawing it. animate=false while a finger drags.
+    applyScroll: function (animate) {
+        var el = $("details"), sc = el.querySelector(".scroller"), content = el.querySelector(".content");
+        if (!sc || !content) return;
+        this.scrollY = Math.max(0, Math.min(Math.max(0, content.offsetHeight - sc.clientHeight), this.scrollY));
+        var tr = "translateY(" + Math.round(-this.scrollY) + "px)", tn = animate ? "transform 0.15s" : "none";
+        if (animate) void content.offsetWidth;   // start the animation from the position already drawn
+        content.style.webkitTransition = animate ? "-webkit-transform 0.15s" : "none"; content.style.transition = tn;
+        content.style.webkitTransform = tr; content.style.transform = tr;
+    },
+    scrollBy: function (dy, animate) { this.free = true; this.scrollY += dy; this.applyScroll(animate); },
+
     runLink: function (id) {
         var lst = app.states[id], p = Model.linkPrimary(id, lst);
         if (p.ui === "camera") { this.close(); Camera.open(Dash.cameraTiles(), id); return; }
@@ -899,15 +911,12 @@ var Details = {
         if (k === "back" || k === "info" || k === "menu") { this.close(); return; }
         // without anything to select (or past the last row), Up/Down scroll the panel
         if (k === "up") {
-            if (this.free && this.scrollY > 0) this.scrollY -= 160;
-            else if (this.current > 0) { this.current--; this.free = false; }
-            else this.scrollY -= 160;
-            this.confirmEntity = ""; this.render(); return;
+            if ((this.free && this.scrollY > 0) || this.current === 0) { this.scrollBy(-160, true); return; }
+            this.current--; this.free = false; this.confirmEntity = ""; this.render(); return;
         }
         if (k === "down") {
-            if (this.current < this.rows.length - 1 && !this.free) this.current++;
-            else { this.free = true; this.scrollY += 160; }
-            this.confirmEntity = ""; this.render(); return;
+            if (this.free || this.current >= this.rows.length - 1) { this.scrollBy(160, true); return; }
+            this.current++; this.confirmEntity = ""; this.render(); return;
         }
         this.act(k);
     },
@@ -930,7 +939,9 @@ var Details = {
         this.rows = Model.detailRows(t, st).concat(Model.linkRows(t));
         if (this.current >= this.rows.length) this.current = Math.max(0, this.rows.length - 1);
         var color = Model.isOn(st) ? (t.color || Theme.accent) : Theme.text2;
-        var h = '<div class="dim"></div><div class="side r">' + (POINTER ? '<span class="closebtn" data-close="1">' + icon("close") + "</span>" : "") + '<div class="scroller"><div class="content">';
+        var y0 = Math.round(-this.scrollY);
+        var h = '<div class="dim"></div><div class="side r">' + (POINTER ? '<span class="closebtn" data-close="1">' + icon("close") + "</span>" : "")
+            + '<div class="scroller"><div class="content" style="-webkit-transition:none;transition:none;-webkit-transform:translateY(' + y0 + 'px);transform:translateY(' + y0 + 'px)">';
         h += '<div class="dhead"><i class="mdi" style="color:' + esc(color) + '">' + Mdi.glyph(Model.icon(t, st)) + "</i>";
         h += '<div class="t nowrap">' + esc(Model.name(t, st)) + '</div><div class="s nowrap">' + esc(Model.stateText(t, st)) + "</div></div>";
         for (var i = 0; i < this.rows.length; i++) {
@@ -983,16 +994,13 @@ var Details = {
         // keep the selected row in view
         var sc = el.querySelector(".scroller"), content = el.querySelector(".content"), rowEl = el.querySelector(".row.sel");
         // keep the selected row in view; Up/Down past the rows scroll freely (forecast, info)
-        var maxY = Math.max(0, content.offsetHeight - sc.clientHeight);
         if (rowEl && !this.free) {
             var y = rowEl.offsetTop, hgt = rowEl.offsetHeight, viewH = sc.clientHeight;
             if (this.current === 0) this.scrollY = 0;
             else if (y + hgt > this.scrollY + viewH) this.scrollY = y + hgt - viewH + 8;
             else if (y < this.scrollY) this.scrollY = y - 8;
         }
-        this.scrollY = Math.max(0, Math.min(maxY, this.scrollY));
-        content.style.webkitTransform = "translateY(" + (-this.scrollY) + "px)";
-        content.style.transform = "translateY(" + (-this.scrollY) + "px)";
+        this.applyScroll(true);
     }
 };
 
@@ -1228,7 +1236,7 @@ function pressMove(x, y) {
         press.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
     }
     if (press.moved && stack.length && stack[stack.length - 1] === Details && press.axis === "y") {
-        Details.free = true; Details.scrollY += (press.lastY - y) / stageScale; Details.render();
+        Details.scrollBy((press.lastY - y) / stageScale, false);
     }
     if (press.moved && !stack.length && app.screen === "dash") {
         if (press.axis === "y") Dash.scrollBy((press.lastY - y) / stageScale);
@@ -1255,7 +1263,7 @@ document.addEventListener("mousedown", function (e) { if (now() - lastTouch < 10
 document.addEventListener("mousemove", function (e) { if (mouseDown) pressMove(e.clientX, e.clientY); });
 document.addEventListener("mouseup", function () { if (!mouseDown) return; mouseDown = false; pressEnd(); });
 document.addEventListener("wheel", function (e) {
-    if (stack.length && stack[stack.length - 1] === Details) { Details.free = true; Details.scrollY += e.deltaY; Details.render(); }
+    if (stack.length && stack[stack.length - 1] === Details) Details.scrollBy(e.deltaY, true);
     else if (!stack.length && app.screen === "dash") Dash.scrollBy(e.deltaY);
 });
 document.addEventListener("contextmenu", function (e) { e.preventDefault(); });

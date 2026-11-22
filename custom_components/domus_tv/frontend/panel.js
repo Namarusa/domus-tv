@@ -279,7 +279,7 @@ const SKIP_DOMAINS = new Set(["update", "device_tracker", "person", "zone", "sun
   "conversation", "image", "notify", "assist_satellite", "wake_word", "todo", "calendar"]);
 
 // Must match manifest.json (checked by web/tools/build.py).
-const PANEL_VERSION = "0.9.0";
+const PANEL_VERSION = "0.9.1";
 const HEADER_DEFAULTS = { clock: "right", clock_format: "24", clock_size: "m", date: "off", date_position: "beside", weather: "", chips: [], title: true, dots: true };
 const hdrOf = (d) => ({ ...HEADER_DEFAULTS, ...((d && d.header) || {}) });
 const pad2 = (n) => (n < 10 ? "0" : "") + n;
