@@ -213,6 +213,28 @@ function fetchHistory(entity, hours, cb) {
         });
 }
 
+function fetchForecast(entity, kind, cb) {
+    var key = "fc|" + entity + "|" + kind, hit = app.historyCache[key];
+    if (hit && now() - hit.t < 600000) { cb(hit.data); return; }
+    request("GET", "/api/domus_tv/forecast?entity=" + encodeURIComponent(entity) + "&type=" + kind, null, true,
+        function (status, data) {
+            if (status === 200 && data) { app.historyCache[key] = { t: now(), data: data }; cb(data); }
+        });
+}
+
+// Forecast strip HTML: columns of label / icon / temperature (+ rain chance when wide enough)
+function forecastStrip(items, n, k, showRain) {
+    var h = "", w = 100 / n;
+    for (var i = 0; i < n && i < items.length; i++) {
+        var f = items[i];
+        h += '<div class="fcol" style="width:' + w + '%"><div class="fl" style="font-size:' + Math.round(14 * k) + 'px">' + esc(f.label) + "</div>"
+            + icon(f.icon).replace('class="mdi"', 'class="mdi" style="font-size:' + Math.round(26 * k) + 'px"')
+            + '<div class="ft" style="font-size:' + Math.round(17 * k) + 'px">' + esc(f.temp) + (f.low ? '<span class="lo"> ' + esc(f.low) + "</span>" : "") + "</div>"
+            + (showRain && f.rain ? '<div class="fr" style="font-size:' + Math.round(13 * k) + 'px">' + esc(f.rain) + "</div>" : "") + "</div>";
+    }
+    return h;
+}
+
 function cameraUrl(entity) {
     var st = app.states[entity];
     if (!st || !st.a || !st.a.entity_picture) return "";
@@ -614,6 +636,7 @@ var Dash = {
             h += '<i class="mdi ico" style="left:' + pad + "px;top:" + (pad * 0.9) + "px;font-size:" + iconSize + 'px"></i>';
             h += '<div class="big" style="right:' + pad + "px;top:" + (pad * 0.6) + "px;width:" + (r.w - 2 * pad - iconSize - 8 * k) + "px;height:" + (iconSize + 6 * k) + "px;line-height:" + (iconSize + 6 * k) + 'px"></div>';
             h += '<canvas></canvas>';
+            if (t.forecast && Model.isWeather(t.entity)) h += '<div class="fc"></div>';
             h += '<div class="nm"></div>';
             h += '<div class="st" style="left:' + pad + "px;right:" + pad + "px;bottom:" + pad + "px;height:" + (26 * k) + "px;line-height:" + (26 * k) + 'px"></div>';
         }
@@ -675,6 +698,9 @@ var Dash = {
             var cv = el.querySelector("canvas");
             var top = pad * 0.9 + info.iconSize + 4 * k, gb = bottom + nh + 2 * k;
             cv.style.cssText = "left:" + pad + "px;right:" + pad + "px;top:" + top + "px;height:" + Math.max(0, info.h - top - gb) + "px;width:" + (info.w - 2 * pad) + "px";
+            var fcEl = el.querySelector(".fc");
+            if (fcEl) fcEl.style.cssText = "left:" + pad + "px;right:" + pad + "px;top:" + (pad * 0.9) + "px;height:" + Math.max(0, info.h - pad * 0.9 - gb) + "px;"
+                + "padding-left:" + (info.iconSize + 10 * k) + "px";
             c.graphDirty = true;
         }
         c.bigValue = bigValue; c.text = text; c.name = name; c.showState = showState;
@@ -685,6 +711,17 @@ var Dash = {
         var self = this;
         for (var i = 0; i < this.tiles.length; i++) (function (i) {
             var t = self.tiles[i];
+            if (t.forecast && Model.isWeather(t.entity)) {
+                fetchForecast(t.entity, t.forecast, function (d) {
+                    var el = self.els[i], fcEl = el && el.querySelector(".fc");
+                    if (self.tiles[i] !== t || !fcEl) return;
+                    var info = el._info, items = Model.forecastItems(d, t.forecast === "hourly" ? 12 : 7);
+                    var avail = info.w - 2 * info.pad - info.iconSize - 10 * info.k;
+                    var n = Math.max(1, Math.min(items.length, Math.floor(avail / (62 * info.k))));
+                    fcEl.innerHTML = forecastStrip(items, n, t.h > 1 ? info.k : info.k * 0.85, info.h > 150);
+                });
+                return;
+            }
             if (self.els[i]._info.type !== "sensor" || !(t.graph > 0)) return;
             fetchHistory(t.entity, t.graph, function (d) {
                 if (self.tiles[i] !== t) return;
@@ -830,9 +867,15 @@ var Details = {
 
     open: function (t) {
         var self = this;
-        this.tile = t; this.current = 0; this.hist = null; this.scrollY = 0; this.confirmEntity = "";
+        this.tile = t; this.current = 0; this.hist = null; this.scrollY = 0; this.free = false; this.confirmEntity = ""; this.fc = {};
         overlay(this);
         this.render();
+        if (Model.isWeather(t.entity)) {
+            var kinds = Model.forecastKinds(app.states[t.entity]);
+            for (var k = 0; k < kinds.length; k++) (function (kind) {
+                fetchForecast(t.entity, kind, function (d) { if (self.tile === t) { self.fc[kind] = d; self.render(); } });
+            })(kinds[k]);
+        }
         if (Model.isNumeric(app.states[t.entity]))
             fetchHistory(t.entity, 24, function (d) { if (self.tile === t) { self.hist = d; self.render(); } });
     },
@@ -854,8 +897,18 @@ var Details = {
 
     key: function (k) {
         if (k === "back" || k === "info" || k === "menu") { this.close(); return; }
-        if (k === "up") { if (this.current > 0) this.current--; this.confirmEntity = ""; this.render(); return; }
-        if (k === "down") { if (this.current < this.rows.length - 1) this.current++; this.confirmEntity = ""; this.render(); return; }
+        // without anything to select (or past the last row), Up/Down scroll the panel
+        if (k === "up") {
+            if (this.free && this.scrollY > 0) this.scrollY -= 160;
+            else if (this.current > 0) { this.current--; this.free = false; }
+            else this.scrollY -= 160;
+            this.confirmEntity = ""; this.render(); return;
+        }
+        if (k === "down") {
+            if (this.current < this.rows.length - 1 && !this.free) this.current++;
+            else { this.free = true; this.scrollY += 160; }
+            this.confirmEntity = ""; this.render(); return;
+        }
         this.act(k);
     },
     act: function (k) {
@@ -904,6 +957,22 @@ var Details = {
                 h += '<div class="msg">' + esc(I18n.t(hs && hs.recorder === false ? "details.noRecorder" : hs ? "details.noHistory" : "dash.loading")) + "</div>";
             h += "</div>";
         }
+        if (Model.isWeather(t.entity)) {
+            var kinds = Model.forecastKinds(st);
+            if (!kinds.length) h += '<div class="sect">' + esc(I18n.t("fc.none")) + "</div>";
+            if (this.fc.hourly) {
+                var hi = Model.forecastItems(this.fc.hourly, 12);
+                h += '<div class="sect">' + esc(I18n.t("fc.hourly")) + '</div><div class="fcgrid">' + forecastStrip(hi.slice(0, 6), 6, 1, true) + "</div>";
+                if (hi.length > 6) h += '<div class="fcgrid">' + forecastStrip(hi.slice(6, 12), 6, 1, true) + "</div>";
+            }
+            if (this.fc.daily) {
+                var di = Model.forecastItems(this.fc.daily, 7);
+                h += '<div class="sect">' + esc(I18n.t("fc.daily")) + "</div>";
+                for (var q = 0; q < di.length; q++)
+                    h += '<div class="fday"><span class="d">' + esc(di[q].label) + "</span>" + icon(di[q].icon) + '<span class="r">' + esc(di[q].rain) + "</span>"
+                        + '<span class="t">' + esc(di[q].temp) + '<span class="lo"> ' + esc(di[q].low) + "</span></span></div>";
+            }
+        }
         var info = Model.infoLines(t, st);
         for (var j = 0; j < info.length; j++)
             h += '<div class="info"><span class="k">' + esc(info[j][0]) + '</span><span class="v">' + esc(info[j][1]) + "</span></div>";
@@ -913,12 +982,15 @@ var Details = {
         if (numeric && this.hist) drawGraph($("dhist"), this.hist.points, t.color || Theme.accent, 2.5, 0.18);
         // keep the selected row in view
         var sc = el.querySelector(".scroller"), content = el.querySelector(".content"), rowEl = el.querySelector(".row.sel");
-        if (rowEl) {
+        // keep the selected row in view; Up/Down past the rows scroll freely (forecast, info)
+        var maxY = Math.max(0, content.offsetHeight - sc.clientHeight);
+        if (rowEl && !this.free) {
             var y = rowEl.offsetTop, hgt = rowEl.offsetHeight, viewH = sc.clientHeight;
             if (this.current === 0) this.scrollY = 0;
-            else if (y + hgt > this.scrollY + viewH) this.scrollY = Math.min(content.offsetHeight - viewH, y + hgt - viewH + 8);
-            else if (y < this.scrollY) this.scrollY = Math.max(0, y - 8);
+            else if (y + hgt > this.scrollY + viewH) this.scrollY = y + hgt - viewH + 8;
+            else if (y < this.scrollY) this.scrollY = y - 8;
         }
+        this.scrollY = Math.max(0, Math.min(maxY, this.scrollY));
         content.style.webkitTransform = "translateY(" + (-this.scrollY) + "px)";
         content.style.transform = "translateY(" + (-this.scrollY) + "px)";
     }
@@ -1136,7 +1208,7 @@ var press = { timer: null, x: 0, y: 0, lastY: 0, dx: 0, axis: "", moved: false, 
 function pressStart(x, y, target) {
     press.x = x; press.y = press.lastY = y; press.dx = 0; press.axis = ""; press.moved = false; press.long = false; press.down = true;
     clearTimeout(press.timer);
-    if (stack.length || app.screen !== "dash") return;
+    if (stack.length || app.screen !== "dash") return;   // (drags inside the details panel are handled in pressMove)
     var t = closest(target, "data-i");
     if (!t) return;
     press.timer = setTimeout(function () {
@@ -1154,6 +1226,9 @@ function pressMove(x, y) {
     if (!press.moved && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) {
         press.moved = true; clearTimeout(press.timer);
         press.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (press.moved && stack.length && stack[stack.length - 1] === Details && press.axis === "y") {
+        Details.free = true; Details.scrollY += (press.lastY - y) / stageScale; Details.render();
     }
     if (press.moved && !stack.length && app.screen === "dash") {
         if (press.axis === "y") Dash.scrollBy((press.lastY - y) / stageScale);
@@ -1179,7 +1254,10 @@ var mouseDown = false;
 document.addEventListener("mousedown", function (e) { if (now() - lastTouch < 1000) return; mouseDown = true; pressStart(e.clientX, e.clientY, e.target); });
 document.addEventListener("mousemove", function (e) { if (mouseDown) pressMove(e.clientX, e.clientY); });
 document.addEventListener("mouseup", function () { if (!mouseDown) return; mouseDown = false; pressEnd(); });
-document.addEventListener("wheel", function (e) { if (!stack.length && app.screen === "dash") Dash.scrollBy(e.deltaY); });
+document.addEventListener("wheel", function (e) {
+    if (stack.length && stack[stack.length - 1] === Details) { Details.free = true; Details.scrollY += e.deltaY; Details.render(); }
+    else if (!stack.length && app.screen === "dash") Dash.scrollBy(e.deltaY);
+});
 document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
 document.addEventListener("click", function (e) {

@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @callback
 def async_register_views(hass: HomeAssistant) -> None:
-    for view in (PairStartView, PairPollView, LayoutView, StatesView, ActionView, HistoryView, ScreenView):
+    for view in (PairStartView, PairPollView, LayoutView, StatesView, ActionView, HistoryView, ForecastView, ScreenView):
         hass.http.register_view(view(hass))
 
 
@@ -320,6 +320,69 @@ class HistoryView(_Base):
             "min": min(values) if values else None,
             "max": max(values) if values else None,
             "unit": state.attributes.get("unit_of_measurement") if state else None,
+        })
+
+
+# weather.get_forecasts types, by supported_features bit (WeatherEntityFeature)
+FORECAST_FEATURES = {"daily": 1, "hourly": 2, "twice_daily": 4}
+FORECAST_LIMIT = {"hourly": 12, "daily": 7, "twice_daily": 14}
+FORECAST_FIELDS = (
+    "datetime", "condition", "temperature", "templow", "precipitation", "precipitation_probability",
+    "wind_speed", "wind_bearing", "is_daytime",
+)
+FORECAST_CACHE_S = 600
+
+
+class ForecastView(_Base):
+    """Forecast of one dashboard weather entity: GET /api/domus_tv/forecast?entity=weather.x&type=hourly|daily."""
+
+    url = "/api/domus_tv/forecast"
+    name = "api:domus_tv:forecast"
+
+    async def get(self, request: web.Request) -> web.Response:
+        data = self.data()
+        if data is None:
+            return self.json_message("Domus TV not set up", HTTPStatus.SERVICE_UNAVAILABLE)
+        entity_id = request.query.get("entity", "")
+        kind = request.query.get("type", "daily")
+        if kind not in FORECAST_FEATURES:
+            kind = "daily"
+        if not entity_id.startswith("weather.") or entity_id not in data.used_entities():
+            return self.json_message("Entity not on a dashboard", HTTPStatus.FORBIDDEN)
+        user = request[KEY_HASS_USER]
+        if not user.is_admin and not user.permissions.check_entity(entity_id, POLICY_READ):
+            return self.json_message("Not allowed", HTTPStatus.FORBIDDEN)
+        self.seen(request)
+        state = self.hass.states.get(entity_id)
+        features = int(state.attributes.get("supported_features") or 0) if state else 0
+        supported = [k for k, bit in FORECAST_FEATURES.items() if features & bit]
+        if kind not in supported:
+            return self.json({"entity": entity_id, "type": kind, "supported": supported, "forecast": []})
+
+        cache = self.hass.data.setdefault(f"{DOMAIN}_forecast_cache", {})
+        key = (entity_id, kind)
+        now = time.monotonic()
+        if key in cache and now - cache[key][0] < FORECAST_CACHE_S:
+            items = cache[key][1]
+        else:
+            try:
+                resp = await self.hass.services.async_call(
+                    "weather", "get_forecasts", {"entity_id": entity_id, "type": kind},
+                    blocking=True, return_response=True,
+                )
+            except Exception as err:  # noqa: BLE001 - integration-specific failures
+                _LOGGER.debug("Forecast for %s failed: %s", entity_id, err)
+                return self.json({"entity": entity_id, "type": kind, "supported": supported, "forecast": []})
+            raw = (resp or {}).get(entity_id, {}).get("forecast", []) or []
+            items = [{k: f.get(k) for k in FORECAST_FIELDS if f.get(k) is not None} for f in raw[: FORECAST_LIMIT[kind]]]
+            cache[key] = (now, items)
+        return self.json({
+            "entity": entity_id,
+            "type": kind,
+            "supported": supported,
+            "forecast": items,
+            "temperature_unit": state.attributes.get("temperature_unit") if state else None,
+            "wind_speed_unit": state.attributes.get("wind_speed_unit") if state else None,
         })
 
 

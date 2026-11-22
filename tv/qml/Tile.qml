@@ -25,6 +25,21 @@ Item {
     // big top-right value only for numbers and thermostats; on/off sensors use the state line
     readonly property bool bigValue: { revision; return type === "climate" || (type === "sensor" && Model.isNumeric(st)); }
     property var history: []
+    readonly property bool hasForecast: !!tile.forecast && Model.isWeather(tile.entity)
+    property var forecast: []
+    function loadForecast() {
+        if (!hasForecast) return;
+        app.fetchForecast(tile.entity, tile.forecast, function(d) {
+            root.forecast = Model.forecastItems(d, tile.forecast === "hourly" ? 12 : 7);
+        });
+    }
+    Timer {
+        interval: 600000; repeat: true; triggeredOnStart: true
+        running: root.hasForecast && app.screen === "dash" && app.layout !== null
+        onTriggered: root.loadForecast()
+    }
+    // the language changes labels (Today / Auj.)
+    Connections { target: app; onLangChanged: root.loadForecast() }
 
     function loadHistory() {
         if (!hasGraph) return;
@@ -154,6 +169,19 @@ Item {
             wrapMode: root.tile.h > 1 ? Text.WordWrap : Text.NoWrap
             maximumLineCount: root.tile.h > 1 ? 2 : 1
             elide: Text.ElideRight
+        }
+
+        // weather forecast next to the icon, above the name
+        ForecastStrip {
+            visible: root.hasForecast
+            anchors.left: icon.right; anchors.leftMargin: 10 * root.k
+            anchors.right: parent.right; anchors.rightMargin: root.pad
+            anchors.top: parent.top; anchors.topMargin: root.pad * 0.9
+            anchors.bottom: nameLine.top; anchors.bottomMargin: 2 * root.k
+            items: root.forecast
+            k: root.tile.h > 1 ? root.k : root.k * 0.85
+            count: Math.max(1, Math.floor(width / (62 * root.k)))
+            showRain: root.height > 150
         }
 
         // history curve between the icon and the name

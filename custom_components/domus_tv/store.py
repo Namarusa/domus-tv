@@ -213,6 +213,8 @@ def _links(value: Any, own: str) -> list[str]:
     return out
 
 
+FORECASTS = ("", "hourly", "daily")   # forecast shown on a weather tile
+
 HEADER_CHOICES = {
     "clock": ("right", "center", "left", "off"),
     "clock_format": ("24", "12"),
@@ -283,6 +285,7 @@ def validate_dashboards(dashboards: Any) -> list[dict[str, Any]]:
                 "w": w,
                 "h": 1 if ttype == "header" else _int(tile.get("h"), 1, 4, 1),
                 "graph": _int(tile.get("graph"), 0, 168, 0) if _int(tile.get("graph"), 0, 168, 0) in GRAPH_HOURS else 0,
+                "forecast": tile.get("forecast") if tile.get("forecast") in FORECASTS else "",
                 "links": _links(tile.get("links"), entity),
             })
         out.append({

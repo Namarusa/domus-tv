@@ -162,6 +162,15 @@ Application {
             });
     }
 
+    function fetchForecast(entity, kind, callback) {
+        var key = "fc|" + entity + "|" + kind, hit = historyCache[key];
+        if (hit && Date.now() - hit.t < 600000) { callback(hit.data); return; }
+        request("GET", "/api/domus_tv/forecast?entity=" + encodeURIComponent(entity) + "&type=" + kind, null, true,
+            function(status, data) {
+                if (status === 200 && data) { historyCache[key] = { t: Date.now(), data: data }; callback(data); }
+            });
+    }
+
     function cameraUrl(entity, stamp) {
         var st = states[entity];
         if (!st || !st.a || !st.a.entity_picture) return "";

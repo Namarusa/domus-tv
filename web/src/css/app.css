@@ -135,6 +135,20 @@ body { font-family: "LG Smart UI", "Samsung One", Roboto, "Segoe UI", Helvetica,
 .histbox { height: 150px; border-radius: 12px; background: #1d2430; position: relative; margin-bottom: 26px; }
 .histbox .msg { position: absolute; left: 0; right: 0; top: 64px; text-align: center; font-size: 16px; color: #6b7585; }
 .hhead { font-size: 16px; color: #6b7585; margin-bottom: 6px; overflow: hidden; }
+.tile .fc { position: absolute; white-space: nowrap; overflow: hidden; display: -webkit-box; display: -webkit-flex; display: flex;
+            -webkit-align-items: center; align-items: center; }
+.fcol { display: inline-block; text-align: center; vertical-align: middle; }
+.fcol .fl { color: #9aa5b5; }
+.fcol .mdi { color: #e8ecf2; display: block; margin: 2px 0; }
+.fcol .ft { font-weight: 600; }
+.fcol .lo, .fday .lo { color: #6b7585; font-weight: normal; }
+.fcol .fr { color: #6fa8dc; }
+.fcgrid { border-radius: 12px; background: #1d2430; padding: 10px 4px; margin-bottom: 10px; white-space: nowrap; }
+.fday { position: relative; height: 44px; line-height: 44px; border-bottom: 1px solid #2c3442; font-size: 19px; }
+.fday .d { display: inline-block; width: 70px; color: #9aa5b5; }
+.fday .mdi { font-size: 26px; vertical-align: middle; }
+.fday .r { display: inline-block; width: 80px; margin-left: 14px; color: #6fa8dc; font-size: 16px; }
+.fday .t { position: absolute; right: 4px; font-weight: 600; }
 .info { font-size: 18px; white-space: nowrap; margin-bottom: 4px; }
 .info .k { display: inline-block; width: 150px; color: #6b7585; }
 .info .v { display: inline-block; width: 246px; color: #9aa5b5; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }

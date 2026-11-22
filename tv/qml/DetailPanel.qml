@@ -26,11 +26,24 @@ FocusScope {
     signal openCamera(string entity)
 
     property var hist: null
+    property var fcHourly: null
+    property var fcDaily: null
+    readonly property bool weather: tile !== null && Model.isWeather(tile.entity)
+    readonly property var kinds: { revision; return weather ? Model.forecastKinds(st) : []; }
+    // Up/Down past the selectable rows scroll the panel (forecast, info)
+    function scrollBy(dy) {
+        scroller.contentY = Math.max(0, Math.min(Math.max(0, content.height - scroller.height), scroller.contentY + dy));
+    }
     readonly property bool numeric: { revision; return tile !== null && Model.isNumeric(st) && Model.effectiveType(tile) === "sensor"; }
 
     function open(t) {
-        tile = t; current = 0; hist = null; visible = true; forceActiveFocus();
+        tile = t; current = 0; hist = null; fcHourly = null; fcDaily = null; visible = true; forceActiveFocus();
         scroller.contentY = 0;
+        if (Model.isWeather(t.entity)) {
+            var kinds = Model.forecastKinds(app.states[t.entity]);
+            if (kinds.indexOf("hourly") >= 0) app.fetchForecast(t.entity, "hourly", function(d) { if (root.tile === t) root.fcHourly = d; });
+            if (kinds.indexOf("daily") >= 0) app.fetchForecast(t.entity, "daily", function(d) { if (root.tile === t) root.fcDaily = d; });
+        }
         if (Model.isNumeric(app.states[t.entity]))
             app.fetchHistory(t.entity, 24, function(d) { if (root.tile === t) root.hist = d; });
     }
@@ -56,8 +69,19 @@ FocusScope {
         var k = event.key;
         event.accepted = true;
         if (k === Qt.Key_Back || k === Qt.Key_Escape || k === Qt.Key_Info || k === Qt.Key_Menu) { close(); return; }
-        if (k === Qt.Key_Up) { if (current > 0) current--; confirmEntity = ""; return; }
-        if (k === Qt.Key_Down) { if (current < rows.length - 1) current++; confirmEntity = ""; return; }
+        var bottomY = Math.max(0, content.height - scroller.height);
+        if (k === Qt.Key_Up) {
+            var it = rowsRep.itemAt(current);
+            if (it && scroller.contentY > it.mapToItem(content, 0, 0).y) scrollBy(-160);   // scrolled below the rows
+            else if (current > 0) current--;
+            else scrollBy(-160);
+            confirmEntity = ""; return;
+        }
+        if (k === Qt.Key_Down) {
+            if (current < rows.length - 1) current++;
+            else scrollBy(160);
+            confirmEntity = ""; return;
+        }
         var row = rows[current];
         if (!row) return;
         if ((k === Qt.Key_Left || k === Qt.Key_Right) && row.kind === "stepper") {
@@ -212,6 +236,39 @@ FocusScope {
                               : app.tr(root.hist ? "details.noHistory" : "dash.loading")
                         color: Theme.text3; font.pixelSize: 16
                     }
+                }
+            }
+
+            // ---- weather: next 12 hours and the week
+            Text {
+                visible: root.weather && root.kinds.length === 0
+                width: parent.width; wrapMode: Text.WordWrap
+                text: app.tr("fc.none"); color: Theme.text3; font.pixelSize: 16
+            }
+            Text { visible: root.fcHourly !== null; text: app.tr("fc.hourly"); color: Theme.text3; font.pixelSize: 16 }
+            Repeater {
+                model: root.fcHourly ? 2 : 0
+                Rectangle {
+                    readonly property var items: (app.lang, Model.forecastItems(root.fcHourly, 12).slice(index * 6, index * 6 + 6))
+                    visible: items.length > 0
+                    width: parent.width; height: 126; radius: 12; color: Theme.tile
+                    ForecastStrip { anchors.fill: parent; anchors.margins: 6; items: parent.items; count: 6; k: 1; showRain: true }
+                }
+            }
+            Text { visible: root.fcDaily !== null; text: app.tr("fc.daily"); color: Theme.text3; font.pixelSize: 16 }
+            Repeater {
+                model: root.fcDaily ? (app.lang, Model.forecastItems(root.fcDaily, 7)) : []
+                Item {
+                    width: parent.width; height: 44
+                    Text { x: 0; width: 70; anchors.verticalCenter: parent.verticalCenter; text: modelData.label; color: Theme.text2; font.pixelSize: 19 }
+                    Icon { x: 70; anchors.verticalCenter: parent.verticalCenter; name: modelData.icon; size: 26; color: Theme.text }
+                    Text { x: 112; anchors.verticalCenter: parent.verticalCenter; text: modelData.rain; color: "#6fa8dc"; font.pixelSize: 16 }
+                    Row {
+                        anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter; spacing: 6
+                        Text { text: modelData.temp; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
+                        Text { text: modelData.low; color: Theme.text3; font.pixelSize: 19 }
+                    }
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
                 }
             }
 

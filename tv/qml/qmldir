@@ -9,3 +9,4 @@ SetupScreen 1.0 SetupScreen.qml
 Tile 1.0 Tile.qml
 Toast 1.0 Toast.qml
 Graph 1.0 Graph.qml
+ForecastStrip 1.0 ForecastStrip.qml

@@ -28,7 +28,11 @@ FORWARDED_ATTRIBUTES = {
         "hvac_modes", "hvac_action", "min_temp", "max_temp", "target_temp_step",
     ),
     "media_player": ("media_title", "media_artist", "volume_level", "is_volume_muted", "source"),
-    "weather": ("temperature", "temperature_unit", "humidity"),
+    "weather": (
+        "temperature", "temperature_unit", "humidity", "apparent_temperature", "dew_point",
+        "pressure", "pressure_unit", "wind_speed", "wind_speed_unit", "wind_bearing", "wind_gust_speed",
+        "visibility", "visibility_unit", "precipitation_unit", "uv_index", "cloud_coverage", "supported_features",
+    ),
     "fan": ("percentage",),
     "camera": (),
     "sensor": ("state_class",),

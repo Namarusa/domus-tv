@@ -322,7 +322,14 @@ function infoLines(tile, st) {
     var a = st.a || {};
     if (a.current_temperature !== undefined && a.current_temperature !== null) out.push([I18n.t("info.temperature"), fmtNumber(a.current_temperature) + " °"]);
     if (a.hvac_action) out.push([I18n.t("info.activity"), label(a.hvac_action)]);
+    if (a.apparent_temperature !== undefined && a.apparent_temperature !== null) out.push([I18n.t("info.feels"), fmtNumber(a.apparent_temperature) + "°"]);
     if (a.humidity !== undefined) out.push([I18n.t("info.humidity"), a.humidity + " %"]);
+    if (a.wind_speed !== undefined && a.wind_speed !== null)
+        out.push([I18n.t("info.wind"), fmtNumber(a.wind_speed) + " " + (a.wind_speed_unit || "")
+            + (a.wind_bearing !== undefined && a.wind_bearing !== null && !isNaN(+a.wind_bearing) ? " " + I18n.compass(+a.wind_bearing) : "")
+            + (a.wind_gust_speed ? " (" + I18n.t("info.gust", fmtNumber(a.wind_gust_speed)) + ")" : "")]);
+    if (a.pressure !== undefined && a.pressure !== null) out.push([I18n.t("info.pressure"), fmtNumber(a.pressure) + " " + (a.pressure_unit || "")]);
+    if (a.uv_index !== undefined && a.uv_index !== null) out.push([I18n.t("info.uv"), fmtNumber(a.uv_index)]);
     if (a.source) out.push([I18n.t("info.source"), a.source]);
     if (st.c) out.push([I18n.t("info.since"), fmtDate(new Date(st.c * 1000), true)]);
     out.push([I18n.t("info.entity"), tile.entity]);
@@ -354,4 +361,35 @@ function clockPx(size) { return CLOCK_PX[size] || 30; }
 function weatherText(st) {
     if (!st || !st.a || st.a.temperature === undefined || st.a.temperature === null) return "";
     return fmtNumber(st.a.temperature) + "°";
+}
+
+// ---- weather forecast
+function isWeather(entityId) { return String(entityId || "").indexOf("weather.") === 0; }
+
+// Forecast kinds a weather entity offers (supported_features: 1 daily, 2 hourly).
+function forecastKinds(st) {
+    var f = st && st.a ? +(st.a.supported_features || 0) : 0, out = [];
+    if (f & 2) out.push("hourly");
+    if (f & 1) out.push("daily");
+    return out;
+}
+
+// Server forecast → display items: { label, icon, temp, low, rain }.
+function forecastItems(data, max) {
+    var list = data && data.forecast ? data.forecast : [], out = [];
+    var today = new Date().toDateString();
+    for (var i = 0; i < list.length && out.length < (max || 99); i++) {
+        var f = list[i], dt = new Date(f.datetime);
+        if (isNaN(dt.getTime())) continue;
+        var label = data.type === "hourly" ? I18n.hourLabel(dt)
+            : (dt.toDateString() === today ? I18n.t("fc.today") : I18n.dayShort(dt));
+        out.push({
+            label: label,
+            icon: weatherIcon(f.condition),
+            temp: f.temperature !== undefined && f.temperature !== null ? fmtNumber(Math.round(f.temperature)) + "°" : "",
+            low: f.templow !== undefined && f.templow !== null ? fmtNumber(Math.round(f.templow)) + "°" : "",
+            rain: f.precipitation_probability !== undefined && f.precipitation_probability !== null ? Math.round(f.precipitation_probability) + " %" : ""
+        });
+    }
+    return out;
 }

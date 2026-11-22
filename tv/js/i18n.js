@@ -93,6 +93,9 @@ en: {
     "row.unmute": "Unmute", "row.mute": "Mute", "row.fullscreen": "Full screen",
     "info.temperature": "Temperature", "info.activity": "Activity", "info.humidity": "Humidity",
     "info.source": "Source", "info.since": "Since", "info.entity": "Entity",
+    "info.feels": "Feels like", "info.wind": "Wind", "info.gust": "gusts {0}", "info.pressure": "Pressure", "info.uv": "UV index",
+    "fc.hourly": "Next 12 hours", "fc.daily": "This week", "fc.today": "Today", "fc.none": "No forecast available from this weather integration",
+    compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
 
     states: {
         on: "On", off: "Off", open: "Open", closed: "Closed", opening: "Opening…", closing: "Closing…",
@@ -198,6 +201,9 @@ fr: {
     "row.unmute": "Rétablir le son", "row.mute": "Couper le son", "row.fullscreen": "Plein écran",
     "info.temperature": "Température", "info.activity": "Activité", "info.humidity": "Humidité",
     "info.source": "Source", "info.since": "Depuis", "info.entity": "Entité",
+    "info.feels": "Ressenti", "info.wind": "Vent", "info.gust": "rafales {0}", "info.pressure": "Pression", "info.uv": "Indice UV",
+    "fc.hourly": "Prochaines 12 heures", "fc.daily": "Cette semaine", "fc.today": "Auj.", "fc.none": "Pas de prévisions pour cette intégration météo",
+    compass: ["N", "NE", "E", "SE", "S", "SO", "O", "NO"],
 
     states: {
         on: "Allumé", off: "Éteint", open: "Ouvert", closed: "Fermé", opening: "Ouverture…", closing: "Fermeture…",
@@ -265,4 +271,12 @@ function headerDate(dt, mode) {
     var days = (long ? tb.days : tb.daysShort) || (long ? en.days : en.daysShort);
     var months = (long ? tb.months : tb.monthsShort) || (long ? en.months : en.monthsShort);
     return days[dt.getDay()] + " " + dt.getDate() + " " + months[dt.getMonth()];
+}
+
+// Forecast labels: hour ("14:00" / "14 h") and short day ("Mon" / "lun.")
+function hourLabel(dt) { return LANG === "fr" ? dt.getHours() + " h" : pad2(dt.getHours()) + ":00"; }
+function dayShort(dt) { var tb = table(); return (tb.daysShort || STRINGS.en.daysShort)[dt.getDay()]; }
+function compass(deg) {
+    var c = table().compass || STRINGS.en.compass;
+    return c[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
 }

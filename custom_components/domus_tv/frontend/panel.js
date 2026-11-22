@@ -43,6 +43,11 @@ const STR = {
   "f.columns": "Columns",
   "f.columnsOpt": "{0} columns ({1} visible rows)",
   "hdr.title": "Top bar",
+  "f.forecast": "Forecast on the tile",
+  "fc.opt.none": "None",
+  "fc.opt.hourly": "Next 12 hours",
+  "fc.opt.daily": "Week",
+  "help.weather": "Shows the conditions and temperature, with the forecast if chosen. Tap or OK opens the next 12 hours and the week, wind and pressure. Wider tiles show more forecast columns.",
   "restart.banner": "Domus TV {0} is installed, but Home Assistant is still running version {1}. Restart Home Assistant (Settings → System → Restart) to finish the update — until then, new settings are not saved.",
   "restart.unknown": "an older one",
   "hdr.date_position": "Date position",
@@ -168,6 +173,11 @@ const STR = {
   "f.columns": "Colonnes",
   "f.columnsOpt": "{0} colonnes ({1} rangées visibles)",
   "hdr.title": "Barre du haut",
+  "f.forecast": "Prévisions sur la tuile",
+  "fc.opt.none": "Aucune",
+  "fc.opt.hourly": "12 prochaines heures",
+  "fc.opt.daily": "Semaine",
+  "help.weather": "Affiche le temps et la température, avec les prévisions si choisies. Toucher ou OK ouvre les 12 prochaines heures et la semaine, le vent et la pression. Une tuile plus large affiche plus de colonnes de prévisions.",
   "restart.banner": "Domus TV {0} est installé, mais Home Assistant fait encore tourner la version {1}. Redémarrez Home Assistant (Paramètres → Système → Redémarrer) pour terminer la mise à jour : en attendant, les nouveaux réglages ne sont pas enregistrés.",
   "restart.unknown": "précédente",
   "hdr.date_position": "Position de la date",
@@ -269,7 +279,7 @@ const SKIP_DOMAINS = new Set(["update", "device_tracker", "person", "zone", "sun
   "conversation", "image", "notify", "assist_satellite", "wake_word", "todo", "calendar"]);
 
 // Must match manifest.json (checked by web/tools/build.py).
-const PANEL_VERSION = "0.8.0";
+const PANEL_VERSION = "0.9.0";
 const HEADER_DEFAULTS = { clock: "right", clock_format: "24", clock_size: "m", date: "off", date_position: "beside", weather: "", chips: [], title: true, dots: true };
 const hdrOf = (d) => ({ ...HEADER_DEFAULTS, ...((d && d.header) || {}) });
 const pad2 = (n) => (n < 10 ? "0" : "") + n;
@@ -766,7 +776,11 @@ class DomusTvPanel extends HTMLElement {
           class: t.color === c ? "sw cur" : "sw", style: { background: c || "var(--primary-color)" },
           title: c || T("f.defaultColor"), onclick: () => set("color", c),
         }, c ? "" : "A")))),
-      type === "sensor" ? h("label", {}, T("f.graph"),
+      (t.entity || "").startsWith("weather.") ? h("label", {}, T("f.forecast"),
+        h("select", { onchange: (e) => set("forecast", e.target.value) },
+          [["", T("fc.opt.none")], ["hourly", T("fc.opt.hourly")], ["daily", T("fc.opt.daily")]].map(([v, l]) =>
+            h("option", { value: v, selected: (t.forecast || "") === v }, l)))) : null,
+      type === "sensor" && !(t.entity || "").startsWith("weather.") ? h("label", {}, T("f.graph"),
         h("select", { onchange: (e) => set("graph", +e.target.value) },
           [[0, T("graph.none")], [6, T("graph.hours", 6)], [24, T("graph.hours", 24)], [48, T("graph.hours", 48)], [168, T("graph.days", 7)]].map(([v, l]) =>
             h("option", { value: v, selected: (t.graph || 0) === v }, l)))) : null,
@@ -798,7 +812,7 @@ class DomusTvPanel extends HTMLElement {
         h("button", { onclick: () => { const c = { ...clone(t), id: uid() }; this._change(() => dash.tiles.splice(idx + 1, 0, c)); this._sel = c.id; this._render(); } }, T("btn.duplicate")),
         h("button", { class: "danger", onclick: () => this._removeTile(t.id) }, T("btn.delete")),
       ),
-      h("p", { class: "hint" }, HELP(type)),
+      h("p", { class: "hint" }, (t.entity || "").startsWith("weather.") ? T("help.weather") : HELP(type)),
     );
   }
 
