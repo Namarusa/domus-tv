@@ -51,7 +51,21 @@ body { font-family: "LG Smart UI", "Samsung One", Roboto, "Segoe UI", Helvetica,
 #bar .dot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; background: #2c3442; margin-right: 8px; }
 #bar .dot.on { background: #e8ecf2; }
 #bar .right { position: absolute; right: 0; top: 0; height: 70px; line-height: 70px; white-space: nowrap; }
-#bar .clock { font-size: 30px; vertical-align: middle; }
+#bar .center { position: absolute; left: 0; right: 0; top: 0; height: 70px; line-height: 70px; text-align: center; white-space: nowrap; pointer-events: none; }
+#bar .clockbox { display: inline-block; vertical-align: middle; white-space: nowrap; }
+#bar .left .clockbox { margin-right: 22px; }
+#bar .right .clockbox { margin-left: 18px; }
+#bar .clock { vertical-align: middle; font-weight: 500; }
+#bar .date { vertical-align: middle; color: #9aa5b5; margin-right: 12px; }
+#bar .chip, #bar .wx { display: inline-block; height: 40px; line-height: 40px; border-radius: 20px; background: #1d2430; padding: 0 14px 0 10px;
+                       margin-left: 10px; vertical-align: middle; font-size: 18px; color: #9aa5b5; }
+#bar .chip .mdi, #bar .wx .mdi { font-size: 24px; vertical-align: middle; margin-right: 6px; }
+#bar .chip .ct, #bar .wx .ct { vertical-align: middle; }
+#bar .chip.on { color: #e8ecf2; }
+#bar .chip.on .mdi { color: #f5a623; }
+#bar .wx { background: transparent; font-size: 24px; color: #e8ecf2; padding: 0 6px; }
+#bar .wx .mdi { font-size: 30px; color: #f5a623; }
+.pointer #bar .chip, .pointer #bar .wx { cursor: pointer; }
 .offline { display: inline-block; height: 34px; line-height: 34px; border-radius: 17px; background: #e5534b; color: #fff;
            font-size: 17px; padding: 0 14px 0 12px; vertical-align: middle; margin-right: 20px; }
 .offline .mdi { font-size: 20px; vertical-align: middle; margin-right: 8px; }

@@ -42,6 +42,30 @@ const STR = {
   "f.dashIcon": "Icon (optional, e.g. mdi:sofa)",
   "f.columns": "Columns",
   "f.columnsOpt": "{0} columns ({1} visible rows)",
+  "hdr.title": "Top bar",
+  "hdr.clock": "Clock",
+  "hdr.clock.right": "Right",
+  "hdr.clock.center": "Centre",
+  "hdr.clock.left": "Left",
+  "hdr.clock.off": "Hidden",
+  "hdr.format": "Format",
+  "hdr.format.24": "24 h",
+  "hdr.format.12": "12 h (AM/PM)",
+  "hdr.size": "Size",
+  "hdr.size.s": "Small",
+  "hdr.size.m": "Medium",
+  "hdr.size.l": "Large",
+  "hdr.date": "Date",
+  "hdr.date.off": "Hidden",
+  "hdr.date.short": "Short (Sun 22 Nov)",
+  "hdr.date.long": "Long (Sunday 22 November)",
+  "hdr.weather": "Weather (optional)",
+  "hdr.weatherPh": "weather.home",
+  "hdr.chips": "Status chips (up to 4)",
+  "hdr.chipsHint": "Small pills showing an entity's state, e.g. alarm, garage door, car charging. On wall screens, tapping one opens its details.",
+  "hdr.addChip": "+ Add a chip",
+  "hdr.showTitle": "Show the dashboard title",
+  "hdr.showDots": "Show the dashboard dots",
   "btn.before": "◀ Before",
   "btn.after": "After ▶",
   "btn.delete": "Delete",
@@ -138,6 +162,30 @@ const STR = {
   "f.dashIcon": "Icône (facultatif, ex. mdi:sofa)",
   "f.columns": "Colonnes",
   "f.columnsOpt": "{0} colonnes ({1} rangées visibles)",
+  "hdr.title": "Barre du haut",
+  "hdr.clock": "Horloge",
+  "hdr.clock.right": "À droite",
+  "hdr.clock.center": "Au centre",
+  "hdr.clock.left": "À gauche",
+  "hdr.clock.off": "Masquée",
+  "hdr.format": "Format",
+  "hdr.format.24": "24 h",
+  "hdr.format.12": "12 h (AM/PM)",
+  "hdr.size": "Taille",
+  "hdr.size.s": "Petite",
+  "hdr.size.m": "Moyenne",
+  "hdr.size.l": "Grande",
+  "hdr.date": "Date",
+  "hdr.date.off": "Masquée",
+  "hdr.date.short": "Courte (dim. 22 nov.)",
+  "hdr.date.long": "Longue (dimanche 22 novembre)",
+  "hdr.weather": "Météo (facultatif)",
+  "hdr.weatherPh": "weather.maison",
+  "hdr.chips": "Indicateurs (jusqu'à 4)",
+  "hdr.chipsHint": "Petites pastilles montrant l'état d'une entité, par ex. alarme, porte du garage, voiture en charge. Sur un écran mural, les toucher ouvre leurs détails.",
+  "hdr.addChip": "+ Ajouter un indicateur",
+  "hdr.showTitle": "Afficher le titre du dashboard",
+  "hdr.showDots": "Afficher les points des dashboards",
   "btn.before": "◀ Avant",
   "btn.after": "Après ▶",
   "btn.delete": "Supprimer",
@@ -209,6 +257,10 @@ function T(k, ...args) {
 const COLORS = ["", "#f5a623", "#4cafef", "#46c37b", "#e5534b", "#a371f7", "#ef6fb6", "#2ec4b6", "#8a8f98"];
 const SKIP_DOMAINS = new Set(["update", "device_tracker", "person", "zone", "sun", "event", "tts", "stt",
   "conversation", "image", "notify", "assist_satellite", "wake_word", "todo", "calendar"]);
+
+const HEADER_DEFAULTS = { clock: "right", clock_format: "24", clock_size: "m", date: "off", weather: "", chips: [], title: true, dots: true };
+const hdrOf = (d) => ({ ...HEADER_DEFAULTS, ...((d && d.header) || {}) });
+const pad2 = (n) => (n < 10 ? "0" : "") + n;
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -526,9 +578,22 @@ class DomusTvPanel extends HTMLElement {
     const pct = (v, total) => `${(v / total) * 100}%`;
     const H = Math.max(SCREEN.height, height);
 
+    const hd = hdrOf(dash);
+    const now = new Date();
+    const clockTxt = hd.clock_format === "12" ? `${(now.getHours() % 12) || 12}:${pad2(now.getMinutes())} ${now.getHours() < 12 ? "AM" : "PM"}` : `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+    const dateTxt = hd.date === "off" ? "" : now.toLocaleDateString(LANG === "fr" ? "fr-FR" : "en-GB", hd.date === "long" ? { weekday: "long", day: "numeric", month: "long" } : { weekday: "short", day: "numeric", month: "short" }).replace(",", "");
+    const clockEl = hd.clock === "off" ? null : h("span", { class: `tvclock s-${hd.clock_size}` }, dateTxt ? h("span", { class: "tvdate" }, dateTxt) : null, clockTxt);
+    const wst = hd.weather && this._hass.states[hd.weather];
     tv.append(h("div", { class: "tvbar", style: { height: pct(SCREEN.top - 20, H) } },
-      h("span", { class: "tvtitle" }, dash.title),
-      h("span", { class: "tvdots" }, this._dashboards.map((d, i) => h("i", { class: i === this._dash ? "cur" : "" }))),
+      h("span", { class: "tvleft" },
+        hd.clock === "left" ? clockEl : null,
+        hd.title ? h("span", { class: "tvtitle" }, dash.title) : null,
+        hd.dots ? h("span", { class: "tvdots" }, this._dashboards.map((d, i) => h("i", { class: i === this._dash ? "cur" : "" }))) : null),
+      hd.clock === "center" ? h("span", { class: "tvcenter" }, clockEl) : null,
+      h("span", { class: "tvright" },
+        hd.chips.map((eid) => h("span", { class: "tvchip" }, this._hass.states[eid] ? this._icon({ entity: eid }) : null, this._stateText(eid))),
+        wst ? h("span", { class: "tvwx" }, h("ha-state-icon", { ".hass": this._hass, ".stateObj": wst }), `${wst.attributes.temperature ?? ""}°`) : null,
+        hd.clock === "right" ? clockEl : null),
     ));
     if (H > fold) tv.append(h("div", { class: "fold", style: { top: pct(fold, H) } }));
 
@@ -593,6 +658,7 @@ class DomusTvPanel extends HTMLElement {
         h("button", { onclick: () => this._moveDashboard(1), disabled: this._dash === this._dashboards.length - 1 }, T("btn.after")),
         h("button", { class: "danger", onclick: () => this._removeDashboard() }, T("btn.delete")),
       ),
+      this._renderHeaderForm(dash),
       h("h3", {}, T("f.add")),
       h("div", { class: "row" },
         h("button", { class: "primary", onclick: () => this._addTile() }, T("btn.addTile")),
@@ -603,6 +669,43 @@ class DomusTvPanel extends HTMLElement {
           areaSel = h("select", {}, areas.map((a) => h("option", { value: a.area_id }, a.name))),
           h("button", { onclick: () => this._addArea(areaSel.value) }, T("f.add")))) : null,
       h("p", { class: "hint" }, T("hint.tiles", dash.tiles.length)),
+    );
+  }
+
+  _renderHeaderForm(dash) {
+    const hd = hdrOf(dash);
+    const setH = (k, v) => { dash.header = { ...hdrOf(dash), [k]: v }; this._render(); };
+    const sel = (k, opts) => h("select", { onchange: (e) => setH(k, e.target.value) },
+      opts.map((o) => h("option", { value: o, selected: hd[k] === o }, T(`hdr.${k === "clock_format" ? "format" : k === "clock_size" ? "size" : k}.${o}`))));
+    const weathers = Object.keys(this._hass.states).filter((e) => e.startsWith("weather.")).sort();
+    const chips = hd.chips.slice();
+    return h("div", { class: "hdrbox" },
+      h("h3", {}, T("hdr.title")),
+      h("div", { class: "row" },
+        h("label", {}, T("hdr.clock"), sel("clock", ["right", "center", "left", "off"])),
+        h("label", {}, T("hdr.date"), sel("date", ["off", "short", "long"]))),
+      hd.clock !== "off" ? h("div", { class: "row" },
+        h("label", {}, T("hdr.format"), sel("clock_format", ["24", "12"])),
+        h("label", {}, T("hdr.size"), sel("clock_size", ["s", "m", "l"]))) : null,
+      h("label", {}, T("hdr.weather"),
+        h("select", { onchange: (e) => setH("weather", e.target.value) },
+          h("option", { value: "", selected: !hd.weather }, "—"),
+          weathers.map((w) => h("option", { value: w, selected: hd.weather === w },
+            (this._hass.states[w].attributes.friendly_name || w) + " (" + w + ")")))),
+      h("div", { class: "lbl" }, T("hdr.chips")),
+      chips.map((eid, i) => h("div", { class: "row" },
+        h("input", { list: "entities-hdr", value: eid, placeholder: T("f.searchEntity"), "data-chip": i,
+          onchange: (e) => { chips[i] = e.target.value.trim(); setH("chips", chips.filter(Boolean)); } }),
+        h("span", { class: "iconprev" }, eid && this._hass.states[eid] ? this._icon({ entity: eid }) : ""),
+        h("button", { class: "link", title: T("btn.remove"), onclick: () => { chips.splice(i, 1); setH("chips", chips); } }, "✕"))),
+      h("datalist", { id: "entities-hdr" }, this._entityOptions().map((o) => h("option", { value: o.id }, o.name))),
+      chips.length < 4 ? h("button", { onclick: () => {
+        dash.header = { ...hd, chips: chips.concat([""]) }; this._render();
+        const inputs = this.shadowRoot.querySelectorAll("[data-chip]"); if (inputs.length) inputs[inputs.length - 1].focus();
+      } }, T("hdr.addChip")) : null,
+      h("p", { class: "hint" }, T("hdr.chipsHint")),
+      h("label", { class: "check" }, h("input", { type: "checkbox", ".checked": hd.title, onchange: (e) => setH("title", e.target.checked) }), T("hdr.showTitle")),
+      h("label", { class: "check" }, h("input", { type: "checkbox", ".checked": hd.dots, onchange: (e) => setH("dots", e.target.checked) }), T("hdr.showDots")),
     );
   }
 
@@ -752,6 +855,14 @@ aside { border-left:1px solid var(--divider-color); background:var(--card-backgr
 .tv { position:relative; width:100%; max-width:1100px; background:linear-gradient(160deg,#141a24,#0b0e14 60%); border-radius:10px;
   overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,.35); container-type:inline-size; color:#e8ecf2; }
 .tvbar { position:absolute; left:3.1%; right:3.1%; top:2%; display:flex; align-items:center; justify-content:space-between; }
+.tvleft, .tvright { display:flex; align-items:center; gap:1.1cqw; white-space:nowrap; }
+.tvcenter { position:absolute; left:0; right:0; text-align:center; pointer-events:none; }
+.tvclock { font-size:2.3cqw; white-space:nowrap; } .tvclock.s-s { font-size:1.7cqw; } .tvclock.s-l { font-size:3.4cqw; }
+.tvdate { color:#9aa5b5; font-size:.62em; margin-right:.6em; }
+.tvchip { display:inline-flex; align-items:center; gap:.3cqw; background:#1d2430; border-radius:2cqw; padding:.2cqw .8cqw; font-size:1.3cqw; color:#9aa5b5; --mdc-icon-size:1.8cqw; }
+.tvwx { display:inline-flex; align-items:center; gap:.3cqw; font-size:1.8cqw; --mdc-icon-size:2.3cqw; color:#e8ecf2; }
+.hdrbox { border-top:1px solid var(--divider-color); border-bottom:1px solid var(--divider-color); padding:6px 0 10px; display:flex; flex-direction:column; gap:10px; }
+label.check { flex-direction:row; align-items:center; gap:8px; display:flex; }
 .tvtitle { font-size:2.6cqw; font-weight:600; }
 .tvdots i { display:inline-block; width:.8cqw; height:.8cqw; border-radius:50%; background:#3a4352; margin-left:.5cqw; }
 .tvdots i.cur { background:#fff; }

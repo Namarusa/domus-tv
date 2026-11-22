@@ -509,18 +509,40 @@ var Dash = {
     bar: function () {
         var el = $("bar");
         if (!el) return;
-        var d = this.dash(), ds = this.dashboards(), h = '<div class="left">';
-        h += icon(d && d.icon ? d.icon : "home-automation").replace('class="mdi"', 'class="mdi" style="font-size:36px;color:' + (d && d.icon ? Theme.text : Theme.accent) + '"');
-        h += '<span class="title">' + esc(d ? d.title : "") + "</span>";
-        if (ds.length > 1) {
+        var d = this.dash(), ds = this.dashboards(), hd = Model.header(d), t = new Date();
+        var clockPx = Model.clockPx(hd.clock_size);
+        var clock = hd.clock === "off" ? "" : '<span class="clockbox">'
+            + (hd.date !== "off" ? '<span class="date" style="font-size:' + Math.max(16, Math.round(clockPx * 0.62)) + 'px">' + esc(I18n.headerDate(t, hd.date)) + "</span>" : "")
+            + '<span class="clock" style="font-size:' + clockPx + 'px">' + esc(I18n.clock(t, hd.clock_format)) + "</span></span>";
+        // left: icon, title, dots (and the clock when placed left)
+        var h = '<div class="left">';
+        if (hd.clock === "left") h += clock;
+        if (hd.title) {
+            h += icon(d && d.icon ? d.icon : "home-automation").replace('class="mdi"', 'class="mdi" style="font-size:36px;color:' + (d && d.icon ? Theme.text : Theme.accent) + '"');
+            h += '<span class="title">' + esc(d ? d.title : "") + "</span>";
+        }
+        if (hd.dots && ds.length > 1) {
             h += "<span>";
             for (var i = 0; i < ds.length; i++) h += '<span class="dot' + (i === app.dashIndex ? " on" : "") + '" data-dash="' + i + '"></span>';
             h += "</span>";
         }
-        h += '</div><div class="right">';
+        h += "</div>";
+        if (hd.clock === "center") h += '<div class="center">' + clock + "</div>";
+        // right: status chips, weather, offline warning, clock, menu button
+        h += '<div class="right">';
+        for (var c = 0; c < hd.chips.length; c++) {
+            var cid = hd.chips[c], cst = app.states[cid], ct = { entity: cid };
+            var on = Model.isOn(cst);
+            h += '<span class="chip' + (on ? " on" : "") + '" data-chip="' + esc(cid) + '">' + icon(Model.icon(ct, cst))
+                + '<span class="ct">' + esc(Model.stateText(ct, cst)) + "</span></span>";
+        }
+        if (hd.weather) {
+            var wst = app.states[hd.weather];
+            h += '<span class="wx" data-chip="' + esc(hd.weather) + '">' + icon(Model.weatherIcon(wst ? wst.s : ""))
+                + '<span class="ct">' + esc(Model.weatherText(wst)) + "</span></span>";
+        }
         if (!app.online) h += '<span class="offline">' + icon("lan-disconnect") + esc(I18n.t("dash.offline")) + "</span>";
-        var t = new Date();
-        h += '<span class="clock">' + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + "</span>";
+        if (hd.clock === "right") h += clock;
         if (POINTER) h += '<span class="menubtn" data-cmd="menu">' + icon("menu") + "</span>";
         h += "</div>";
         el.innerHTML = h;
@@ -528,7 +550,7 @@ var Dash = {
         if (msg) {
             if (!app.layout) msg.innerHTML = '<div class="empty"><div style="font-size:26px;color:#9aa5b5">' + esc(I18n.t(app.online ? "dash.loading" : "dash.connecting")) + "</div>"
                 + (app.online ? "" : '<div style="font-size:20px;color:#6b7585;margin-top:14px">' + esc(app.haUrl) + '</div><div style="font-size:20px;margin-top:14px">' + esc(I18n.t("dash.offlineHint")) + '</div>') + "</div>";
-            else if (!this.tiles.length) msg.innerHTML = '<div class="empty"><div style="font-size:30px">Ce dashboard est vide</div><div style="font-size:20px;color:#9aa5b5;margin-top:12px">Ajoutez des tuiles dans Home Assistant → Domus TV. Elles apparaîtront ici toutes seules.</div></div>';
+            else if (!this.tiles.length) msg.innerHTML = '<div class="empty"><div style="font-size:30px">' + esc(I18n.t("dash.empty")) + '</div><div style="font-size:20px;color:#9aa5b5;margin-top:12px">' + esc(I18n.t("dash.emptyHint")) + "</div></div>";
             else msg.innerHTML = "";
         }
     },
@@ -1175,6 +1197,7 @@ document.addEventListener("click", function (e) {
     }
     if (app.screen === "dash") {
         if (closest(e.target, "data-cmd")) { Menu.open(); return; }
+        if ((t = closest(e.target, "data-chip"))) { Details.open({ entity: t.getAttribute("data-chip"), type: "auto", name: "", icon: "", color: "", links: [] }); return; }
         if ((t = closest(e.target, "data-dash"))) { Dash.switchDash(+t.getAttribute("data-dash")); return; }
         if ((t = closest(e.target, "data-i"))) {
             var i = +t.getAttribute("data-i");

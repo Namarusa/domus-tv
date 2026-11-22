@@ -52,6 +52,10 @@ var LANG = "en";
 var STRINGS = {
 en: {
     decimal: ".",
+    days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    daysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     q: "“{0}”",
     "date.at": "at",
 
@@ -160,6 +164,10 @@ en: {
 
 fr: {
     decimal: ",",
+    days: ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
+    daysShort: ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
+    months: ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"],
+    monthsShort: ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
     q: "« {0} »",
     "date.at": "à",
 
@@ -287,7 +295,23 @@ function stateLabel(s) { var m = table().states; return (m && m[s]) || STRINGS.e
 function binaryPair(deviceClass) { var m = table().binary; return (m && m[deviceClass]) || STRINGS.en.binary[deviceClass] || null; }
 function decimal() { return table().decimal || "."; }
 
-return { "LANG": LANG, "LANGUAGES": LANGUAGES, "STRINGS": STRINGS, "binaryPair": binaryPair, "decimal": decimal, "lang": lang, "nextLang": nextLang, "normalize": normalize, "q": q, "setLang": setLang, "stateLabel": stateLabel, "t": t, "table": table };
+// ---- top bar clock and date
+function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+// format "24" → 14:05, "12" → 2:05 PM
+function clock(dt, format) {
+    var h = dt.getHours(), m = pad2(dt.getMinutes());
+    if (format !== "12") return pad2(h) + ":" + m;
+    return ((h % 12) || 12) + ":" + m + (h < 12 ? " AM" : " PM");
+}
+// mode "short" → "Sun 22 Nov" / "dim. 22 nov."; "long" → "Sunday 22 November" / "dimanche 22 novembre"
+function headerDate(dt, mode) {
+    var tb = table(), en = STRINGS.en, long = mode === "long";
+    var days = (long ? tb.days : tb.daysShort) || (long ? en.days : en.daysShort);
+    var months = (long ? tb.months : tb.monthsShort) || (long ? en.months : en.monthsShort);
+    return days[dt.getDay()] + " " + dt.getDate() + " " + months[dt.getMonth()];
+}
+
+return { "LANG": LANG, "LANGUAGES": LANGUAGES, "STRINGS": STRINGS, "binaryPair": binaryPair, "clock": clock, "decimal": decimal, "headerDate": headerDate, "lang": lang, "nextLang": nextLang, "normalize": normalize, "pad2": pad2, "q": q, "setLang": setLang, "stateLabel": stateLabel, "t": t, "table": table };
 })();
 var Model = (function () {
 
@@ -478,7 +502,7 @@ function icon(tile, st) {
     case "camera": return "cctv";
     case "lock": return st && st.s === "unlocked" ? "lock-open-variant" : "lock";
     case "media_player": return st && st.s === "playing" ? "speaker-play" : "speaker";
-    case "weather": return "weather-partly-cloudy";
+    case "weather": return weatherIcon(st ? st.s : "");
     case "person": case "device_tracker": return st && st.s === "home" ? "home-account" : "account-arrow-right";
     case "alarm_control_panel": return st && st.s === "disarmed" ? "shield-off" : "shield-lock";
     case "vacuum": return "robot-vacuum";
@@ -621,5 +645,32 @@ function infoLines(tile, st) {
     return out;
 }
 
-return { "ON_STATES": ON_STATES, "SCREEN": SCREEN, "STATELESS": STATELESS, "cellSize": cellSize, "defaultType": defaultType, "detailRows": detailRows, "domainOf": domainOf, "effectiveType": effectiveType, "firstFocusable": firstFocusable, "fmtDate": fmtDate, "fmtNumber": fmtNumber, "icon": icon, "infoLines": infoLines, "isNumeric": isNumeric, "isOn": isOn, "isUnavailable": isUnavailable, "label": label, "linkPrimary": linkPrimary, "linkRows": linkRows, "name": name, "neighbour": neighbour, "pad2": pad2, "primary": primary, "rowMetrics": rowMetrics, "stateText": stateText, "stepAction": stepAction, "tileRect": tileRect };
+// ---- top bar
+var WEATHER_ICONS = {
+    sunny: "weather-sunny", "clear-night": "weather-night", cloudy: "weather-cloudy", partlycloudy: "weather-partly-cloudy",
+    rainy: "weather-rainy", pouring: "weather-pouring", snowy: "weather-snowy", "snowy-rainy": "weather-snowy-rainy",
+    fog: "weather-fog", hail: "weather-hail", lightning: "weather-lightning", "lightning-rainy": "weather-lightning-rainy",
+    windy: "weather-windy", "windy-variant": "weather-windy-variant", exceptional: "alert-circle-outline"
+};
+function weatherIcon(s) { return WEATHER_ICONS[s] || "weather-partly-cloudy"; }
+
+// Top-bar settings of a dashboard, with defaults for dashboards saved before they existed.
+function header(dash) {
+    var h = (dash && dash.header) || {};
+    return {
+        clock: h.clock || "right", clock_format: h.clock_format || "24", clock_size: h.clock_size || "m",
+        date: h.date || "off", weather: h.weather || "", chips: h.chips || [],
+        title: h.title !== false, dots: h.dots !== false
+    };
+}
+var CLOCK_PX = { s: 22, m: 30, l: 44 };
+function clockPx(size) { return CLOCK_PX[size] || 30; }
+
+// "21,5°" for the top bar, or "" when the weather entity has no temperature yet.
+function weatherText(st) {
+    if (!st || !st.a || st.a.temperature === undefined || st.a.temperature === null) return "";
+    return fmtNumber(st.a.temperature) + "°";
+}
+
+return { "CLOCK_PX": CLOCK_PX, "ON_STATES": ON_STATES, "SCREEN": SCREEN, "STATELESS": STATELESS, "WEATHER_ICONS": WEATHER_ICONS, "cellSize": cellSize, "clockPx": clockPx, "defaultType": defaultType, "detailRows": detailRows, "domainOf": domainOf, "effectiveType": effectiveType, "firstFocusable": firstFocusable, "fmtDate": fmtDate, "fmtNumber": fmtNumber, "header": header, "icon": icon, "infoLines": infoLines, "isNumeric": isNumeric, "isOn": isOn, "isUnavailable": isUnavailable, "label": label, "linkPrimary": linkPrimary, "linkRows": linkRows, "name": name, "neighbour": neighbour, "pad2": pad2, "primary": primary, "rowMetrics": rowMetrics, "stateText": stateText, "stepAction": stepAction, "tileRect": tileRect, "weatherIcon": weatherIcon, "weatherText": weatherText };
 })();

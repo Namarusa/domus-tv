@@ -83,6 +83,10 @@ class DomusData:
                 if tile.get("entity"):
                     used.add(tile["entity"])
                 used.update(tile.get("links") or [])
+            header = dash.get("header") or {}
+            if header.get("weather"):
+                used.add(header["weather"])
+            used.update(header.get("chips") or [])
         return used
 
     # ------------------------------------------------------------------ pairing
@@ -209,6 +213,38 @@ def _links(value: Any, own: str) -> list[str]:
     return out
 
 
+HEADER_CHOICES = {
+    "clock": ("right", "center", "left", "off"),
+    "clock_format": ("24", "12"),
+    "clock_size": ("m", "s", "l"),
+    "date": ("off", "short", "long"),
+}
+MAX_CHIPS = 4
+
+
+def _choice(value: Any, options: tuple[str, ...]) -> str:
+    return value if value in options else options[0]
+
+
+def validate_header(value: Any) -> dict[str, Any]:
+    """Top-bar settings of a dashboard (clock, date, weather, status chips)."""
+    value = value if isinstance(value, dict) else {}
+    out: dict[str, Any] = {k: _choice(value.get(k), opts) for k, opts in HEADER_CHOICES.items()}
+    weather = _str(value.get("weather"), 255)
+    out["weather"] = weather if weather.startswith("weather.") and ENTITY_RE.match(weather) else ""
+    chips: list[str] = []
+    for item in value.get("chips") or []:
+        eid = _str(item, 255)
+        if eid and ENTITY_RE.match(eid) and eid not in chips:
+            chips.append(eid)
+        if len(chips) >= MAX_CHIPS:
+            break
+    out["chips"] = chips
+    out["title"] = value.get("title", True) is not False
+    out["dots"] = value.get("dots", True) is not False
+    return out
+
+
 def validate_dashboards(dashboards: Any) -> list[dict[str, Any]]:
     """Normalise what the editor sends; drop anything unexpected."""
     if not isinstance(dashboards, list) or not dashboards:
@@ -254,6 +290,7 @@ def validate_dashboards(dashboards: Any) -> list[dict[str, Any]]:
             "icon": _str(dash.get("icon"), 80),
             "columns": columns,
             "tiles": tiles,
+            "header": validate_header(dash.get("header")),
         })
     if not out:
         raise ValueError("no valid dashboard")

@@ -186,7 +186,7 @@ function icon(tile, st) {
     case "camera": return "cctv";
     case "lock": return st && st.s === "unlocked" ? "lock-open-variant" : "lock";
     case "media_player": return st && st.s === "playing" ? "speaker-play" : "speaker";
-    case "weather": return "weather-partly-cloudy";
+    case "weather": return weatherIcon(st ? st.s : "");
     case "person": case "device_tracker": return st && st.s === "home" ? "home-account" : "account-arrow-right";
     case "alarm_control_panel": return st && st.s === "disarmed" ? "shield-off" : "shield-lock";
     case "vacuum": return "robot-vacuum";
@@ -327,4 +327,31 @@ function infoLines(tile, st) {
     if (st.c) out.push([I18n.t("info.since"), fmtDate(new Date(st.c * 1000), true)]);
     out.push([I18n.t("info.entity"), tile.entity]);
     return out;
+}
+
+// ---- top bar
+var WEATHER_ICONS = {
+    sunny: "weather-sunny", "clear-night": "weather-night", cloudy: "weather-cloudy", partlycloudy: "weather-partly-cloudy",
+    rainy: "weather-rainy", pouring: "weather-pouring", snowy: "weather-snowy", "snowy-rainy": "weather-snowy-rainy",
+    fog: "weather-fog", hail: "weather-hail", lightning: "weather-lightning", "lightning-rainy": "weather-lightning-rainy",
+    windy: "weather-windy", "windy-variant": "weather-windy-variant", exceptional: "alert-circle-outline"
+};
+function weatherIcon(s) { return WEATHER_ICONS[s] || "weather-partly-cloudy"; }
+
+// Top-bar settings of a dashboard, with defaults for dashboards saved before they existed.
+function header(dash) {
+    var h = (dash && dash.header) || {};
+    return {
+        clock: h.clock || "right", clock_format: h.clock_format || "24", clock_size: h.clock_size || "m",
+        date: h.date || "off", weather: h.weather || "", chips: h.chips || [],
+        title: h.title !== false, dots: h.dots !== false
+    };
+}
+var CLOCK_PX = { s: 22, m: 30, l: 44 };
+function clockPx(size) { return CLOCK_PX[size] || 30; }
+
+// "21,5°" for the top bar, or "" when the weather entity has no temperature yet.
+function weatherText(st) {
+    if (!st || !st.a || st.a.temperature === undefined || st.a.temperature === null) return "";
+    return fmtNumber(st.a.temperature) + "°";
 }

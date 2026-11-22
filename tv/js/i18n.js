@@ -8,6 +8,10 @@ var LANG = "en";
 var STRINGS = {
 en: {
     decimal: ".",
+    days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    daysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     q: "“{0}”",
     "date.at": "at",
 
@@ -116,6 +120,10 @@ en: {
 
 fr: {
     decimal: ",",
+    days: ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
+    daysShort: ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
+    months: ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"],
+    monthsShort: ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
     q: "« {0} »",
     "date.at": "à",
 
@@ -242,3 +250,19 @@ function q(text) { return t("q", text); }
 function stateLabel(s) { var m = table().states; return (m && m[s]) || STRINGS.en.states[s] || s; }
 function binaryPair(deviceClass) { var m = table().binary; return (m && m[deviceClass]) || STRINGS.en.binary[deviceClass] || null; }
 function decimal() { return table().decimal || "."; }
+
+// ---- top bar clock and date
+function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+// format "24" → 14:05, "12" → 2:05 PM
+function clock(dt, format) {
+    var h = dt.getHours(), m = pad2(dt.getMinutes());
+    if (format !== "12") return pad2(h) + ":" + m;
+    return ((h % 12) || 12) + ":" + m + (h < 12 ? " AM" : " PM");
+}
+// mode "short" → "Sun 22 Nov" / "dim. 22 nov."; "long" → "Sunday 22 November" / "dimanche 22 novembre"
+function headerDate(dt, mode) {
+    var tb = table(), en = STRINGS.en, long = mode === "long";
+    var days = (long ? tb.days : tb.daysShort) || (long ? en.days : en.daysShort);
+    var months = (long ? tb.months : tb.monthsShort) || (long ? en.months : en.monthsShort);
+    return days[dt.getDay()] + " " + dt.getDate() + " " + months[dt.getMonth()];
+}
