@@ -701,24 +701,41 @@ var Dash = {
         if (y - margin < this.contentY) this.contentY = Math.max(0, y - margin);
         else if (y + r.h + margin > this.contentY + viewH)
             this.contentY = Math.min(Math.max(0, contentH - viewH), y + r.h + margin - viewH);
-        var g = $("grid");
-        if (g) { g.style.webkitTransform = "translateY(" + (-this.contentY) + "px)"; g.style.transform = "translateY(" + (-this.contentY) + "px)"; }
+        this.place(0, true);
     },
 
     scrollBy: function (dy) {
         if (!this.metrics) return;
         var viewH = 720 - Model.SCREEN.top, contentH = this.metrics.total + Model.SCREEN.bottom + 2 * TOP_PAD;
         this.contentY = Math.max(0, Math.min(Math.max(0, contentH - viewH), this.contentY + dy));
-        var g = $("grid");
-        if (g) { g.style.webkitTransform = "translateY(" + (-this.contentY) + "px)"; g.style.transform = "translateY(" + (-this.contentY) + "px)"; }
+        this.place(0, true);
     },
 
-    switchDash: function (i) {
+    // Position the grid: x = horizontal offset (swipe), y = scroll. animate=false while a finger drags.
+    place: function (x, animate) {
+        var g = $("grid");
+        if (!g) return;
+        var tr = "translate(" + Math.round(x) + "px," + Math.round(-this.contentY) + "px)";
+        var tn = animate ? "-webkit-transform 0.22s ease-out" : "none";
+        g.style.webkitTransition = tn; g.style.transition = animate ? "transform 0.22s ease-out" : "none";
+        g.style.webkitTransform = tr; g.style.transform = tr;
+    },
+
+    // dir: +1 = next (slides in from the right), -1 = previous, 0/undefined = no animation.
+    switchDash: function (i, dir) {
         var ds = this.dashboards();
         if (!ds.length) return;
+        if (ds.length < 2 && dir) { this.place(0, true); return; }
         setDash((i + ds.length) % ds.length);
         this.focusIndex = -1;
         this.build();
+        if (dir) {
+            var self = this;
+            this.place(dir * 1280, false);
+            var g = $("grid");
+            if (g) void g.offsetWidth;   // apply the start position before animating
+            setTimeout(function () { self.place(0, true); }, 16);
+        }
     },
 
     cameraTiles: function () {
@@ -752,15 +769,15 @@ var Dash = {
         if (k === "left" || k === "right" || k === "up" || k === "down") {
             var n = Model.neighbour(this.tiles, this.focusIndex, k);
             if (n >= 0) this.focus(n);
-            else if (k === "up") { this.contentY = 0; var g = $("grid"); if (g) { g.style.webkitTransform = ""; g.style.transform = ""; } }
+            else if (k === "up") { this.contentY = 0; this.place(0, true); }
             return;
         }
         if (k === "ok" && !app.layout) { Menu.open(); return; }
         if (k === "ok") { this.activate(); return; }
         if (k === "info") { if (this.tiles[this.focusIndex]) Details.open(this.tiles[this.focusIndex]); return; }
         if (k === "menu") { Menu.open(); return; }
-        if (k === "chup") { this.switchDash(app.dashIndex + 1); return; }
-        if (k === "chdown") { this.switchDash(app.dashIndex - 1); return; }
+        if (k === "chup") { this.switchDash(app.dashIndex + 1, 1); return; }
+        if (k === "chdown") { this.switchDash(app.dashIndex - 1, -1); return; }
         if (k.charAt(0) === "d" && k !== "d0") { var i = +k.charAt(1) - 1; if (i < this.dashboards().length) this.switchDash(i); return; }
         if (k === "back") {
             if (!app.online || !app.layout) { Menu.open(); return; }
@@ -1068,10 +1085,11 @@ document.addEventListener("mouseover", function (e) {
         if (i !== Dash.focusIndex && Model.effectiveType(Dash.tiles[i]) !== "header") Dash.focus(i);
     }
 });
-// Touch: a long press on a tile opens its details; dragging scrolls the dashboard.
-var press = { timer: null, y: 0, lastY: 0, moved: false, long: false };
-function pressStart(y, target) {
-    press.y = press.lastY = y; press.moved = false; press.long = false;
+// Touch: a long press on a tile opens its details; dragging up/down scrolls the dashboard,
+// swiping left/right changes dashboard (the grid follows the finger).
+var press = { timer: null, x: 0, y: 0, lastY: 0, dx: 0, axis: "", moved: false, long: false, down: false };
+function pressStart(x, y, target) {
+    press.x = x; press.y = press.lastY = y; press.dx = 0; press.axis = ""; press.moved = false; press.long = false; press.down = true;
     clearTimeout(press.timer);
     if (stack.length || app.screen !== "dash") return;
     var t = closest(target, "data-i");
@@ -1085,25 +1103,43 @@ function pressStart(y, target) {
         Details.open(Dash.tiles[i]);
     }, 550);
 }
-function pressMove(y) {
-    if (Math.abs(y - press.y) > 12) { press.moved = true; clearTimeout(press.timer); }
-    if (press.moved && !stack.length && app.screen === "dash") Dash.scrollBy((press.lastY - y) / stageScale);
+function pressMove(x, y) {
+    if (!press.down) return;
+    var dx = x - press.x, dy = y - press.y;
+    if (!press.moved && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) {
+        press.moved = true; clearTimeout(press.timer);
+        press.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (press.moved && !stack.length && app.screen === "dash") {
+        if (press.axis === "y") Dash.scrollBy((press.lastY - y) / stageScale);
+        else if (Dash.dashboards().length > 1) { press.dx = dx / stageScale; Dash.place(press.dx, false); }
+    }
     press.lastY = y;
 }
-function pressEnd() { clearTimeout(press.timer); }
-document.addEventListener("touchstart", function (e) { pressStart(e.touches[0].clientY, e.target); }, { passive: true });
-document.addEventListener("touchmove", function (e) { pressMove(e.touches[0].clientY); }, { passive: true });
-document.addEventListener("touchend", pressEnd);
+function pressEnd() {
+    clearTimeout(press.timer);
+    if (!press.down) return;
+    press.down = false;
+    if (press.axis !== "x" || stack.length || app.screen !== "dash") return;
+    if (press.dx < -110) Dash.switchDash(app.dashIndex + 1, 1);
+    else if (press.dx > 110) Dash.switchDash(app.dashIndex - 1, -1);
+    else Dash.place(0, true);
+}
+
+var lastTouch = 0;
+document.addEventListener("touchstart", function (e) { lastTouch = now(); pressStart(e.touches[0].clientX, e.touches[0].clientY, e.target); }, { passive: true });
+document.addEventListener("touchmove", function (e) { pressMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+document.addEventListener("touchend", function () { lastTouch = now(); pressEnd(); });
 var mouseDown = false;
-document.addEventListener("mousedown", function (e) { mouseDown = true; pressStart(e.clientY, e.target); });
-document.addEventListener("mousemove", function (e) { if (mouseDown) pressMove(e.clientY); });
-document.addEventListener("mouseup", function () { mouseDown = false; pressEnd(); });
+document.addEventListener("mousedown", function (e) { if (now() - lastTouch < 1000) return; mouseDown = true; pressStart(e.clientX, e.clientY, e.target); });
+document.addEventListener("mousemove", function (e) { if (mouseDown) pressMove(e.clientX, e.clientY); });
+document.addEventListener("mouseup", function () { if (!mouseDown) return; mouseDown = false; pressEnd(); });
 document.addEventListener("wheel", function (e) { if (!stack.length && app.screen === "dash") Dash.scrollBy(e.deltaY); });
 document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
 document.addEventListener("click", function (e) {
     var t;
-    if (press.long || press.moved) { press.long = false; press.moved = false; return; }
+    if (press.long || press.moved) { if (now() - lastTouch > 1000) { press.long = false; press.moved = false; } return; }
     if (stack.length) {
         var top = stack[stack.length - 1];
         if (top === Details) {

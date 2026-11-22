@@ -83,7 +83,7 @@ Unofficial project, not affiliated with Home Assistant, the Open Home Foundation
 Home Assistant serves the same app at **`http://<your-HA>:8123/domus_tv/screen`**. Open it on a wall tablet
 (full screen, e.g. Fully Kiosk Browser) and pair it with the code shown, like a TV.
 Options: `?dash=2` opens the 2nd dashboard, `&name=Cuisine` names the screen.
-Tap a tile to act, long-press for details, swipe to scroll, ≡ for the menu.
+Tap a tile to act, long-press for details, swipe up/down to scroll and left/right to change dashboard, ≡ for the menu.
 `web/tools/build.py` refreshes the copy shipped in `custom_components/domus_tv/app/`.
 
 ## LG webOS TV (beta)
