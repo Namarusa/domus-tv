@@ -5,5 +5,5 @@ var Config = {
     CAMERA_TILE_MS: 3000,
     CAMERA_FULL_MS: 1000,
     REQUEST_TIMEOUT_MS: 8000,
-    VERSION: "1.4.0"
+    VERSION: "1.5.0"
 };

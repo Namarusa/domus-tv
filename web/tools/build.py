@@ -70,6 +70,15 @@ def build_webos(www, ipk):
     return out
 
 
+def check_versions():
+    """The configuration page warns when it doesn't match the server: keep both versions equal."""
+    comp = os.path.join(ROOT, "custom_components", "domus_tv")
+    manifest = json.load(open(os.path.join(comp, "manifest.json")))["version"]
+    panel = re.search(r'PANEL_VERSION = "([^"]+)"', open(os.path.join(comp, "frontend", "panel.js"), encoding="utf-8").read()).group(1)
+    if manifest != panel:
+        raise SystemExit("manifest.json version %s != panel.js PANEL_VERSION %s" % (manifest, panel))
+
+
 def build_ha():
     """Copy of the web client shipped inside the integration (generic defaults)."""
     out = os.path.join(ROOT, "custom_components", "domus_tv", "app")
@@ -84,6 +93,7 @@ if __name__ == "__main__":
     ap.add_argument("--url", default="")
     ap.add_argument("--ipk", action="store_true")
     a = ap.parse_args()
+    check_versions()
     print("ha   ->", build_ha())
     www = build_www(a.url)
     print("www  ->", www)

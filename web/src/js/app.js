@@ -511,9 +511,14 @@ var Dash = {
         if (!el) return;
         var d = this.dash(), ds = this.dashboards(), hd = Model.header(d), t = new Date();
         var clockPx = Model.clockPx(hd.clock_size);
-        var clock = hd.clock === "off" ? "" : '<span class="clockbox">'
-            + (hd.date !== "off" ? '<span class="date" style="font-size:' + Math.max(16, Math.round(clockPx * 0.62)) + 'px">' + esc(I18n.headerDate(t, hd.date)) + "</span>" : "")
-            + '<span class="clock" style="font-size:' + clockPx + 'px">' + esc(I18n.clock(t, hd.clock_format)) + "</span></span>";
+        var below = hd.date_position === "below" && hd.date !== "off";
+        var timeHtml = '<span class="clock" style="font-size:' + clockPx + 'px">' + esc(I18n.clock(t, hd.clock_format)) + "</span>";
+        var dateHtml = hd.date === "off" ? "" : '<span class="date" style="font-size:'
+            + (below ? Math.max(14, Math.round(clockPx * 0.45)) : Math.max(16, Math.round(clockPx * 0.62))) + 'px">' + esc(I18n.headerDate(t, hd.date)) + "</span>";
+        // date next to the clock, or stacked below it (aligned with the clock's side)
+        var clock = hd.clock === "off" ? "" : below
+            ? '<span class="clockbox stack at-' + hd.clock + '">' + timeHtml + dateHtml + "</span>"
+            : '<span class="clockbox">' + dateHtml + timeHtml + "</span>";
         // left: icon, title, dots (and the clock when placed left)
         var h = '<div class="left">';
         if (hd.clock === "left") h += clock;

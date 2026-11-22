@@ -218,6 +218,7 @@ HEADER_CHOICES = {
     "clock_format": ("24", "12"),
     "clock_size": ("m", "s", "l"),
     "date": ("off", "short", "long"),
+    "date_position": ("beside", "below"),
 }
 MAX_CHIPS = 4
 

@@ -108,23 +108,49 @@ FocusScope {
         x: Model.SCREEN.side; width: parent.width - 2 * Model.SCREEN.side
         y: 0; height: Model.SCREEN.top - 14
 
-        // clock (+ date): left, centre or right
-        Row {
+        // clock (+ date): left, centre or right; date next to the clock or below it
+        Item {
             id: clockBox
+            property bool below: root.hd.date_position === "below" && root.hd.date !== "off"
+            property string dateText: app.lang ? I18n.headerDate(root.now, root.hd.date) : ""
+            property string timeText: I18n.clock(root.now, root.hd.clock_format)
+            property int px: Model.clockPx(root.hd.clock_size)
             visible: root.hd.clock !== "off"
-            spacing: 12
+            width: below ? stacked.width : side.width
+            height: below ? stacked.height : side.height
             anchors.verticalCenter: parent.verticalCenter
             x: root.hd.clock === "left" ? 0 : root.hd.clock === "center" ? (bar.width - width) / 2 : bar.width - width
-            Text {
-                visible: root.hd.date !== "off"
-                text: app.lang ? I18n.headerDate(root.now, root.hd.date) : ""
-                color: Theme.text2; font.pixelSize: Math.max(16, Math.round(Model.clockPx(root.hd.clock_size) * 0.62))
-                anchors.verticalCenter: parent.verticalCenter
+            Row {
+                id: side
+                visible: !clockBox.below
+                spacing: 12
+                Text {
+                    visible: root.hd.date !== "off"
+                    text: clockBox.dateText
+                    color: Theme.text2; font.pixelSize: Math.max(16, Math.round(clockBox.px * 0.62))
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Text {
+                    text: clockBox.timeText
+                    color: Theme.text; font.pixelSize: clockBox.px; font.weight: Font.Medium
+                    anchors.verticalCenter: parent.verticalCenter
+                }
             }
-            Text {
-                text: I18n.clock(root.now, root.hd.clock_format)
-                color: Theme.text; font.pixelSize: Model.clockPx(root.hd.clock_size); font.weight: Font.Medium
-                anchors.verticalCenter: parent.verticalCenter
+            Column {
+                id: stacked
+                visible: clockBox.below
+                spacing: -2
+                Text {
+                    id: stTime
+                    text: clockBox.timeText
+                    color: Theme.text; font.pixelSize: clockBox.px; font.weight: Font.Medium
+                    x: root.hd.clock === "left" ? 0 : root.hd.clock === "center" ? (stacked.width - width) / 2 : stacked.width - width
+                }
+                Text {
+                    text: clockBox.dateText
+                    color: Theme.text2; font.pixelSize: Math.max(14, Math.round(clockBox.px * 0.45))
+                    x: root.hd.clock === "left" ? 0 : root.hd.clock === "center" ? (stacked.width - width) / 2 : stacked.width - width
+                }
             }
         }
 

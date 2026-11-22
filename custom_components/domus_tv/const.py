@@ -34,3 +34,10 @@ FORWARDED_ATTRIBUTES = {
     "sensor": ("state_class",),
 }
 COMMON_ATTRIBUTES = ("friendly_name", "unit_of_measurement", "icon", "device_class", "entity_picture")
+
+# Integration version (from manifest.json). The panel compares it with its own to detect
+# an update that is installed but not yet active (Home Assistant not restarted).
+import json as _json
+from pathlib import Path as _Path
+
+VERSION: str = _json.loads((_Path(__file__).parent / "manifest.json").read_text("utf-8"))["version"]

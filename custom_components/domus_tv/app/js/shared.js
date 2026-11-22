@@ -659,7 +659,7 @@ function header(dash) {
     var h = (dash && dash.header) || {};
     return {
         clock: h.clock || "right", clock_format: h.clock_format || "24", clock_size: h.clock_size || "m",
-        date: h.date || "off", weather: h.weather || "", chips: h.chips || [],
+        date: h.date || "off", date_position: h.date_position || "beside", weather: h.weather || "", chips: h.chips || [],
         title: h.title !== false, dots: h.dots !== false
     };
 }

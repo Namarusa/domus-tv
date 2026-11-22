@@ -57,6 +57,10 @@ body { font-family: "LG Smart UI", "Samsung One", Roboto, "Segoe UI", Helvetica,
 #bar .right .clockbox { margin-left: 18px; }
 #bar .clock { vertical-align: middle; font-weight: 500; }
 #bar .date { vertical-align: middle; color: #9aa5b5; margin-right: 12px; }
+#bar .clockbox.stack { line-height: 1.05; text-align: right; }
+#bar .clockbox.stack.at-left { text-align: left; }
+#bar .clockbox.stack.at-center { text-align: center; }
+#bar .clockbox.stack .clock, #bar .clockbox.stack .date { display: block; margin-right: 0; }
 #bar .chip, #bar .wx { display: inline-block; height: 40px; line-height: 40px; border-radius: 20px; background: #1d2430; padding: 0 14px 0 10px;
                        margin-left: 10px; vertical-align: middle; font-size: 18px; color: #9aa5b5; }
 #bar .chip .mdi, #bar .wx .mdi { font-size: 24px; vertical-align: middle; margin-right: 6px; }

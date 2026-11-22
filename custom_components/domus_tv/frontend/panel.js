@@ -43,6 +43,11 @@ const STR = {
   "f.columns": "Columns",
   "f.columnsOpt": "{0} columns ({1} visible rows)",
   "hdr.title": "Top bar",
+  "restart.banner": "Domus TV {0} is installed, but Home Assistant is still running version {1}. Restart Home Assistant (Settings → System → Restart) to finish the update — until then, new settings are not saved.",
+  "restart.unknown": "an older one",
+  "hdr.date_position": "Date position",
+  "hdr.date_position.beside": "Next to the clock",
+  "hdr.date_position.below": "Below the clock",
   "hdr.clock": "Clock",
   "hdr.clock.right": "Right",
   "hdr.clock.center": "Centre",
@@ -163,6 +168,11 @@ const STR = {
   "f.columns": "Colonnes",
   "f.columnsOpt": "{0} colonnes ({1} rangées visibles)",
   "hdr.title": "Barre du haut",
+  "restart.banner": "Domus TV {0} est installé, mais Home Assistant fait encore tourner la version {1}. Redémarrez Home Assistant (Paramètres → Système → Redémarrer) pour terminer la mise à jour : en attendant, les nouveaux réglages ne sont pas enregistrés.",
+  "restart.unknown": "précédente",
+  "hdr.date_position": "Position de la date",
+  "hdr.date_position.beside": "À côté de l'heure",
+  "hdr.date_position.below": "Sous l'heure",
   "hdr.clock": "Horloge",
   "hdr.clock.right": "À droite",
   "hdr.clock.center": "Au centre",
@@ -258,7 +268,9 @@ const COLORS = ["", "#f5a623", "#4cafef", "#46c37b", "#e5534b", "#a371f7", "#ef6
 const SKIP_DOMAINS = new Set(["update", "device_tracker", "person", "zone", "sun", "event", "tts", "stt",
   "conversation", "image", "notify", "assist_satellite", "wake_word", "todo", "calendar"]);
 
-const HEADER_DEFAULTS = { clock: "right", clock_format: "24", clock_size: "m", date: "off", weather: "", chips: [], title: true, dots: true };
+// Must match manifest.json (checked by web/tools/build.py).
+const PANEL_VERSION = "0.8.0";
+const HEADER_DEFAULTS = { clock: "right", clock_format: "24", clock_size: "m", date: "off", date_position: "beside", weather: "", chips: [], title: true, dots: true };
 const hdrOf = (d) => ({ ...HEADER_DEFAULTS, ...((d && d.header) || {}) });
 const pad2 = (n) => (n < 10 ? "0" : "") + n;
 
@@ -336,6 +348,7 @@ class DomusTvPanel extends HTMLElement {
       const res = await this._hass.callWS({ type: "domus_tv/config/get" });
       this._dashboards = res.dashboards;
       this._saved = JSON.stringify(res.dashboards);
+      this._serverVersion = res.integration_version || "";
       this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
     } catch (err) {
       this._msg = T("msg.loadFailed", err.message || err.code);
@@ -544,6 +557,11 @@ class DomusTvPanel extends HTMLElement {
       ),
       this._view === "tvs" ? this._renderTvs() : this._renderEditor(),
     );
+    // Installed but not active yet (Home Assistant not restarted after an update)
+    if (this._serverVersion !== undefined && this._serverVersion !== PANEL_VERSION) {
+      root.querySelector("header").after(
+        h("div", { class: "restart" }, T("restart.banner", PANEL_VERSION, this._serverVersion || T("restart.unknown"))));
+    }
     [...root.querySelectorAll(".scroll")].forEach((e, i) => { e.scrollTop = scrollers[i] || 0; });
   }
 
@@ -582,7 +600,8 @@ class DomusTvPanel extends HTMLElement {
     const now = new Date();
     const clockTxt = hd.clock_format === "12" ? `${(now.getHours() % 12) || 12}:${pad2(now.getMinutes())} ${now.getHours() < 12 ? "AM" : "PM"}` : `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
     const dateTxt = hd.date === "off" ? "" : now.toLocaleDateString(LANG === "fr" ? "fr-FR" : "en-GB", hd.date === "long" ? { weekday: "long", day: "numeric", month: "long" } : { weekday: "short", day: "numeric", month: "short" }).replace(",", "");
-    const clockEl = hd.clock === "off" ? null : h("span", { class: `tvclock s-${hd.clock_size}` }, dateTxt ? h("span", { class: "tvdate" }, dateTxt) : null, clockTxt);
+    const clockEl = hd.clock === "off" ? null : h("span", { class: `tvclock s-${hd.clock_size}` + (hd.date_position === "below" ? " stack" : "") + ` at-${hd.clock}` },
+      hd.date_position === "below" ? [h("span", {}, clockTxt), dateTxt ? h("span", { class: "tvdate" }, dateTxt) : null] : [dateTxt ? h("span", { class: "tvdate" }, dateTxt) : null, clockTxt]);
     const wst = hd.weather && this._hass.states[hd.weather];
     tv.append(h("div", { class: "tvbar", style: { height: pct(SCREEN.top - 20, H) } },
       h("span", { class: "tvleft" },
@@ -684,6 +703,7 @@ class DomusTvPanel extends HTMLElement {
       h("div", { class: "row" },
         h("label", {}, T("hdr.clock"), sel("clock", ["right", "center", "left", "off"])),
         h("label", {}, T("hdr.date"), sel("date", ["off", "short", "long"]))),
+      hd.date !== "off" && hd.clock !== "off" ? h("label", {}, T("hdr.date_position"), sel("date_position", ["beside", "below"])) : null,
       hd.clock !== "off" ? h("div", { class: "row" },
         h("label", {}, T("hdr.format"), sel("clock_format", ["24", "12"])),
         h("label", {}, T("hdr.size"), sel("clock_size", ["s", "m", "l"]))) : null,
@@ -836,6 +856,7 @@ nav { display:flex; gap:4px; margin-left:16px; }
 .tab.active { background:rgba(255,255,255,.18); opacity:1; }
 .spacer { flex:1; }
 .msg { font-size:13px; background:rgba(0,0,0,.25); padding:6px 10px; border-radius:6px; max-width:40vw; }
+.restart { background:var(--warning-color, #ffa600); color:#000; padding:10px 16px; font-size:14px; font-weight:500; }
 .msg.err { background:var(--error-color, #db4437); }
 button { font:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--divider-color); background:var(--card-background-color);
   color:var(--primary-text-color); padding:7px 12px; }
@@ -859,6 +880,9 @@ aside { border-left:1px solid var(--divider-color); background:var(--card-backgr
 .tvcenter { position:absolute; left:0; right:0; text-align:center; pointer-events:none; }
 .tvclock { font-size:2.3cqw; white-space:nowrap; } .tvclock.s-s { font-size:1.7cqw; } .tvclock.s-l { font-size:3.4cqw; }
 .tvdate { color:#9aa5b5; font-size:.62em; margin-right:.6em; }
+.tvclock.stack { display:inline-flex; flex-direction:column; align-items:flex-end; line-height:1.05; }
+.tvclock.stack.at-left { align-items:flex-start; } .tvclock.stack.at-center { align-items:center; }
+.tvclock.stack .tvdate { margin-right:0; font-size:.45em; }
 .tvchip { display:inline-flex; align-items:center; gap:.3cqw; background:#1d2430; border-radius:2cqw; padding:.2cqw .8cqw; font-size:1.3cqw; color:#9aa5b5; --mdc-icon-size:1.8cqw; }
 .tvwx { display:inline-flex; align-items:center; gap:.3cqw; font-size:1.8cqw; --mdc-icon-size:2.3cqw; color:#e8ecf2; }
 .hdrbox { border-top:1px solid var(--divider-color); border-bottom:1px solid var(--divider-color); padding:6px 0 10px; display:flex; flex-direction:column; gap:10px; }

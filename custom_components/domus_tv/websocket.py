@@ -8,7 +8,7 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN
+from .const import DOMAIN, VERSION
 
 
 @callback
@@ -32,7 +32,7 @@ def ws_get(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
     data = _data(hass)
     if data is None:
         return _not_loaded(connection, msg)
-    connection.send_result(msg["id"], data.layout())
+    connection.send_result(msg["id"], {**data.layout(), "integration_version": VERSION})
 
 
 @websocket_api.websocket_command(
