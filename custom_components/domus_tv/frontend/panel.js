@@ -1,11 +1,220 @@
 // Domus TV editor panel: design TV dashboards (Freebox, LG webOS…) from Home Assistant.
 import { SCREEN, cellSize, visibleRows, rowMetrics, tileRect, defaultType, defaultSize, effectiveType, pack } from "./layout.js";
 
-const TYPES = [
-  ["auto", "Automatique"], ["toggle", "Interrupteur"], ["light", "Lumière"], ["button", "Bouton / scène"],
-  ["sensor", "Valeur"], ["cover", "Volet / portail"], ["climate", "Thermostat"], ["camera", "Caméra"],
-  ["lock", "Serrure"], ["media", "Lecteur multimédia"], ["header", "Titre de section"],
-];
+const TYPE_IDS = ["auto", "toggle", "light", "button", "sensor", "cover", "climate", "camera", "lock", "media", "header"];
+const typeLabel = (id) => T("type." + id);
+// ---- translations (panel follows the Home Assistant user's language; English fallback)
+const STR = {
+ "en": {
+  "type.auto": "Automatic",
+  "type.toggle": "Switch",
+  "type.light": "Light",
+  "type.button": "Button / scene",
+  "type.sensor": "Value",
+  "type.cover": "Shutter / gate",
+  "type.climate": "Thermostat",
+  "type.camera": "Camera",
+  "type.lock": "Lock",
+  "type.media": "Media player",
+  "type.header": "Section title",
+  "msg.loadFailed": "Could not load: {0}",
+  "msg.saved": "Saved (v{0}). Screens update by themselves.",
+  "msg.error": "Error: {0}",
+  "state.notFound": "not found",
+  "tile.title": "Title",
+  "area.default": "Room",
+  "msg.areaAdded": "{0} entities added from “{1}”.",
+  "dash.new": "New",
+  "msg.keepOne": "Keep at least one dashboard.",
+  "confirm.deleteDash": "Delete the dashboard “{0}”?",
+  "msg.paired": "“{0}” is paired. The screen will show your dashboard in a few seconds.",
+  "msg.badCode": "Unknown or expired code. Check the code shown on the screen.",
+  "confirm.revoke": "Remove access for “{0}”? It will have to be paired again.",
+  "prompt.screenName": "Screen name",
+  "loading": "Loading…",
+  "tab.screens": "Screens ({0})",
+  "btn.save": "Save",
+  "btn.saved": "Saved",
+  "hint.editor": "Drag a tile to move it. On the TV: arrows to move, OK to act, ⓘ for fine controls, CH+/CH- or digits to change dashboard. On wall screens: tap, long-press, swipe. The dotted line marks the bottom of the screen (the rest scrolls).",
+  "links.count": "{0} linked action(s)",
+  "dash.emptyPreview": "Empty dashboard: add tiles or a whole room on the right.",
+  "f.name": "Name",
+  "f.dashIcon": "Icon (optional, e.g. mdi:sofa)",
+  "f.columns": "Columns",
+  "f.columnsOpt": "{0} columns ({1} visible rows)",
+  "btn.before": "◀ Before",
+  "btn.after": "After ▶",
+  "btn.delete": "Delete",
+  "f.add": "Add",
+  "btn.addTile": "+ Tile",
+  "btn.addHeader": "+ Section title",
+  "f.wholeRoom": "A whole room",
+  "hint.tiles": "{0} tile(s). Click a tile in the preview to edit it.",
+  "f.tile": "Tile",
+  "btn.close": "✕ Close",
+  "f.entity": "Entity",
+  "f.search": "Search: kitchen, light.…",
+  "warn.noEntity": "Entity not found",
+  "f.type": "Type",
+  "f.text": "Text",
+  "f.displayName": "Display name (empty = entity name)",
+  "f.icon": "Icon (empty = entity icon)",
+  "f.color": "Colour when active",
+  "f.defaultColor": "Default colour",
+  "f.graph": "Graph (numeric values)",
+  "graph.none": "None",
+  "graph.hours": "{0} hours",
+  "graph.days": "{0} days",
+  "f.links": "Linked actions",
+  "hint.links": "Buttons shown in the Info panel and on the full-screen camera (e.g. gate, lock, lights).",
+  "f.searchEntity": "Search an entity…",
+  "btn.remove": "Remove",
+  "btn.addLink": "+ Add an action",
+  "f.width": "Width",
+  "f.height": "Height",
+  "btn.duplicate": "Duplicate",
+  "never": "never",
+  "pair.title": "Pair a TV",
+  "pair.step1": "Install the Domus app on the TV or Freebox Player and open it (for a wall screen, see below).",
+  "pair.step2": "Enter the Home Assistant address with the remote.",
+  "pair.step3": "Type here the 6-digit code shown on the screen.",
+  "pair.namePh": "Name (e.g. Living room TV)",
+  "pair.btn": "Pair",
+  "pair.hint": "The screen receives a long-lived access token linked to your account. You can remove it here at any time.",
+  "wall.title": "Wall screen or browser",
+  "wall.text": "Open this address on the tablet or screen (full screen, e.g. with Fully Kiosk Browser), then pair it with the code shown, like a TV:",
+  "wall.hint": "Options to add to the address: ?dash=2 opens the 2nd dashboard, &name=Kitchen names the screen. Tap a tile to act, long-press for details, swipe up/down to scroll and left/right to change dashboard.",
+  "tvs.title": "Paired screens",
+  "tvs.paired": "Paired on",
+  "tvs.lastSeen": "Last seen",
+  "tvs.tokenGone": " (token deleted)",
+  "btn.rename": "Rename",
+  "tvs.none": "No screen paired yet.",
+  "help.light": "OK turns on/off. ⓘ opens the controls: ◀ ▶ change the brightness.",
+  "help.toggle": "OK turns on/off.",
+  "help.button": "OK runs the scene, script or button.",
+  "help.sensor": "Shows the value in large type, with a curve if “Graph” is set. ⓘ shows details and the last 24 h curve.",
+  "help.cover": "OK opens/closes (or starts the gate). ⓘ: open, stop, close, position with ◀ ▶.",
+  "help.climate": "◀ ▶ in ⓘ change the target; OK changes the mode.",
+  "help.camera": "Picture refreshed every 3 s (every second full screen). OK shows it full screen, with the linked actions at the bottom.",
+  "help.lock": "OK locks/unlocks (confirmation asked on the screen).",
+  "help.media": "OK play/pause. ⓘ: track, volume.",
+  "help.header": "A title to separate groups of tiles.",
+  "lang.title": "Screen language",
+  "lang.auto": "Home Assistant's language ({0})",
+  "lang.hint": "Language of the TVs and wall screens. Screens switch language at their next refresh.",
+  "lang.saved": "Screen language saved."
+ },
+ "fr": {
+  "type.auto": "Automatique",
+  "type.toggle": "Interrupteur",
+  "type.light": "Lumière",
+  "type.button": "Bouton / scène",
+  "type.sensor": "Valeur",
+  "type.cover": "Volet / portail",
+  "type.climate": "Thermostat",
+  "type.camera": "Caméra",
+  "type.lock": "Serrure",
+  "type.media": "Lecteur multimédia",
+  "type.header": "Titre de section",
+  "msg.loadFailed": "Chargement impossible : {0}",
+  "msg.saved": "Enregistré (v{0}). Les écrans se mettent à jour d'eux-mêmes.",
+  "msg.error": "Erreur : {0}",
+  "state.notFound": "introuvable",
+  "tile.title": "Titre",
+  "area.default": "Pièce",
+  "msg.areaAdded": "{0} entité(s) ajoutée(s) depuis « {1} ».",
+  "dash.new": "Nouveau",
+  "msg.keepOne": "Il faut garder au moins un dashboard.",
+  "confirm.deleteDash": "Supprimer le dashboard « {0} » ?",
+  "msg.paired": "« {0} » est associé. L'écran affiche votre dashboard dans quelques secondes.",
+  "msg.badCode": "Code inconnu ou expiré. Vérifiez le code affiché sur la TV.",
+  "confirm.revoke": "Retirer l'accès de « {0} » ? Il faudra l'associer à nouveau.",
+  "prompt.screenName": "Nom de l'écran",
+  "loading": "Chargement…",
+  "tab.screens": "Écrans ({0})",
+  "btn.save": "Enregistrer",
+  "btn.saved": "Enregistré",
+  "hint.editor": "Glissez une tuile pour la déplacer. Sur la TV : flèches pour naviguer, OK pour agir, ⓘ pour les réglages fins, P+/P- ou chiffres pour changer de dashboard. Sur un écran mural : toucher, appui long, glisser. La ligne pointillée marque le bas de l'écran (le reste défile).",
+  "links.count": "{0} action(s) liée(s)",
+  "dash.emptyPreview": "Dashboard vide : ajoutez des tuiles ou une pièce entière à droite.",
+  "f.name": "Nom",
+  "f.dashIcon": "Icône (facultatif, ex. mdi:sofa)",
+  "f.columns": "Colonnes",
+  "f.columnsOpt": "{0} colonnes ({1} rangées visibles)",
+  "btn.before": "◀ Avant",
+  "btn.after": "Après ▶",
+  "btn.delete": "Supprimer",
+  "f.add": "Ajouter",
+  "btn.addTile": "+ Tuile",
+  "btn.addHeader": "+ Titre de section",
+  "f.wholeRoom": "Toute une pièce",
+  "hint.tiles": "{0} tuile(s). Cliquez une tuile de l'aperçu pour la modifier.",
+  "f.tile": "Tuile",
+  "btn.close": "✕ Fermer",
+  "f.entity": "Entité",
+  "f.search": "Rechercher : salon, light.…",
+  "warn.noEntity": "Entité introuvable",
+  "f.type": "Type",
+  "f.text": "Texte",
+  "f.displayName": "Nom affiché (vide = nom de l'entité)",
+  "f.icon": "Icône (vide = icône de l'entité)",
+  "f.color": "Couleur quand actif",
+  "f.defaultColor": "Couleur par défaut",
+  "f.graph": "Graphique (valeurs numériques)",
+  "graph.none": "Aucun",
+  "graph.hours": "{0} heures",
+  "graph.days": "{0} jours",
+  "f.links": "Actions liées",
+  "hint.links": "Boutons affichés dans le panneau Info et sur la caméra en plein écran (ex. portail, serrure, éclairage).",
+  "f.searchEntity": "Rechercher une entité…",
+  "btn.remove": "Retirer",
+  "btn.addLink": "+ Ajouter une action",
+  "f.width": "Largeur",
+  "f.height": "Hauteur",
+  "btn.duplicate": "Dupliquer",
+  "never": "jamais",
+  "pair.title": "Associer une TV",
+  "pair.step1": "Installez l'app Domus sur la TV ou le Freebox Player et ouvrez-la (pour un écran mural, voir plus bas).",
+  "pair.step2": "Saisissez l'adresse de Home Assistant avec la télécommande.",
+  "pair.step3": "Recopiez ici le code à 6 chiffres affiché sur la TV.",
+  "pair.namePh": "Nom (ex. TV salon)",
+  "pair.btn": "Associer",
+  "pair.hint": "L'écran reçoit un jeton d'accès longue durée lié à votre compte. Vous pouvez le retirer ici à tout moment.",
+  "wall.title": "Écran mural ou navigateur",
+  "wall.text": "Ouvrez cette adresse sur la tablette ou l'écran (en plein écran, par exemple avec Fully Kiosk Browser), puis associez-le avec le code affiché, comme une TV :",
+  "wall.hint": "Options à ajouter à l'adresse : ?dash=2 pour ouvrir le 2e dashboard, &name=Cuisine pour nommer l'écran. Toucher une tuile agit, un appui long ouvre ses détails, glisser vers le haut/bas fait défiler et vers la gauche/droite change de dashboard.",
+  "tvs.title": "Écrans associés",
+  "tvs.paired": "Associé le",
+  "tvs.lastSeen": "Dernier contact",
+  "tvs.tokenGone": " (jeton supprimé)",
+  "btn.rename": "Renommer",
+  "tvs.none": "Aucun écran associé pour l'instant.",
+  "help.light": "OK allume/éteint. ⓘ ouvre le réglage : ◀ ▶ changent la luminosité.",
+  "help.toggle": "OK allume/éteint.",
+  "help.button": "OK lance la scène, le script ou le bouton.",
+  "help.sensor": "Affiche la valeur en grand, avec une courbe si « Graphique » est choisi. ⓘ montre le détail et la courbe des dernières 24 h.",
+  "help.cover": "OK ouvre/ferme (ou démarre le portail). ⓘ : ouvrir, stop, fermer, position avec ◀ ▶.",
+  "help.climate": "◀ ▶ dans ⓘ changent la consigne ; OK change le mode.",
+  "help.camera": "Image rafraîchie toutes les 3 s (chaque seconde en plein écran). OK l'affiche en plein écran, avec les actions liées en bas de l'image.",
+  "help.lock": "OK verrouille/déverrouille (confirmation demandée sur la TV).",
+  "help.media": "OK lecture/pause. ⓘ : piste, volume.",
+  "help.header": "Un titre pour séparer les groupes de tuiles.",
+  "lang.title": "Langue des écrans",
+  "lang.auto": "Langue de Home Assistant ({0})",
+  "lang.hint": "Langue des TV et écrans muraux. Les écrans changent de langue au prochain rafraîchissement.",
+  "lang.saved": "Langue des écrans enregistrée."
+ }
+};
+const SCREEN_LANGS = [["en", "English"], ["fr", "Français"]];
+let LANG = "en";
+function setPanelLang(l) { const n = String(l || "en").toLowerCase().split(/[-_]/)[0]; LANG = STR[n] ? n : "en"; return LANG; }
+function T(k, ...args) {
+  let s = (STR[LANG] && STR[LANG][k]) ?? STR.en[k] ?? k;
+  args.forEach((v, i) => { s = s.replace(`{${i}}`, v); });
+  return s;
+}
+
 const COLORS = ["", "#f5a623", "#4cafef", "#46c37b", "#e5534b", "#a371f7", "#ef6fb6", "#2ec4b6", "#8a8f98"];
 const SKIP_DOMAINS = new Set(["update", "device_tracker", "person", "zone", "sun", "event", "tts", "stt",
   "conversation", "image", "notify", "assist_satellite", "wake_word", "todo", "calendar"]);
@@ -51,6 +260,9 @@ class DomusTvPanel extends HTMLElement {
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
+    const lang = setPanelLang((hass.locale && hass.locale.language) || hass.language);
+    if (!first && lang !== this._lang && this._dashboards) { this._lang = lang; this._render(); return; }
+    this._lang = lang;
     if (first) this._load();
     else if (this._dashboards && this._view === "editor") this._refreshStates();
   }
@@ -80,9 +292,10 @@ class DomusTvPanel extends HTMLElement {
       const res = await this._hass.callWS({ type: "domus_tv/config/get" });
       this._dashboards = res.dashboards;
       this._saved = JSON.stringify(res.dashboards);
+      this._screenLang = res.language || "auto";
       this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
     } catch (err) {
-      this._msg = "Chargement impossible : " + (err.message || err.code);
+      this._msg = T("msg.loadFailed", err.message || err.code);
       this._dashboards = [];
     }
     this._render();
@@ -97,9 +310,9 @@ class DomusTvPanel extends HTMLElement {
       const res = await this._hass.callWS({ type: "domus_tv/config/save", dashboards: this._dashboards });
       this._dashboards = res.dashboards;
       this._saved = JSON.stringify(res.dashboards);
-      this._toast(`Enregistré (v${res.version}). Les écrans se mettent à jour d'eux-mêmes.`);
+      this._toast(T("msg.saved", res.version));
     } catch (err) {
-      this._toast("Erreur : " + (err.message || err.code), true);
+      this._toast(T("msg.error", err.message || err.code), true);
     }
     this._render();
   }
@@ -119,7 +332,7 @@ class DomusTvPanel extends HTMLElement {
   // ------------------------------------------------------------------ helpers
   _stateText(entityId) {
     const st = this._hass.states[entityId];
-    if (!st) return "introuvable";
+    if (!st) return T("state.notFound");
     try { if (this._hass.formatEntityState) return this._hass.formatEntityState(st); } catch (e) { /* older HA */ }
     const unit = st.attributes.unit_of_measurement;
     return unit ? `${st.state} ${unit}` : st.state;
@@ -127,7 +340,7 @@ class DomusTvPanel extends HTMLElement {
   _name(tile) {
     if (tile.name) return tile.name;
     const st = this._hass.states[tile.entity];
-    return (st && st.attributes.friendly_name) || tile.entity || "Titre";
+    return (st && st.attributes.friendly_name) || tile.entity || T("tile.title");
   }
   _icon(tile) {
     if (tile.icon) return h("ha-icon", { icon: tile.icon });
@@ -169,7 +382,7 @@ class DomusTvPanel extends HTMLElement {
       return area === areaId && this._hass.states[e.entity_id] && !SKIP_DOMAINS.has(e.entity_id.split(".")[0]);
     });
     const present = new Set(this._cur.tiles.map((t) => t.entity));
-    const areaName = (this._hass.areas[areaId] || {}).name || "Pièce";
+    const areaName = (this._hass.areas[areaId] || {}).name || T("area.default");
     this._change(() => {
       this._cur.tiles.push({ id: uid(), type: "header", entity: "", name: areaName, icon: "", color: "", w: this._cur.columns, h: 1 });
       for (const e of wanted) {
@@ -178,7 +391,7 @@ class DomusTvPanel extends HTMLElement {
         this._cur.tiles.push({ id: uid(), type: "auto", entity: e.entity_id, name: "", icon: "", color: "", ...defaultSize(type, this._cur.columns) });
       }
     });
-    this._toast(`${wanted.length} entité(s) ajoutée(s) depuis « ${areaName} ».`);
+    this._toast(T("msg.areaAdded", wanted.length, areaName));
     this._render();
   }
 
@@ -205,15 +418,15 @@ class DomusTvPanel extends HTMLElement {
   }
 
   _addDashboard() {
-    this._dashboards.push({ id: uid(), title: "Nouveau", icon: "", columns: 6, tiles: [] });
+    this._dashboards.push({ id: uid(), title: T("dash.new"), icon: "", columns: 6, tiles: [] });
     this._dash = this._dashboards.length - 1;
     this._sel = null;
     this._render();
   }
 
   _removeDashboard() {
-    if (this._dashboards.length < 2) return this._toast("Il faut garder au moins un dashboard.", true);
-    if (!confirm(`Supprimer le dashboard « ${this._cur.title} » ?`)) return;
+    if (this._dashboards.length < 2) return this._toast(T("msg.keepOne"), true);
+    if (!confirm(T("confirm.deleteDash", this._cur.title))) return;
     this._dashboards.splice(this._dash, 1);
     this._dash = 0; this._sel = null;
     this._render();
@@ -231,23 +444,34 @@ class DomusTvPanel extends HTMLElement {
   async _pair(code, name) {
     try {
       const tv = await this._hass.callWS({ type: "domus_tv/pair", code, name: name || undefined });
-      this._toast(`« ${tv.name} » est associé. L'écran affiche votre dashboard dans quelques secondes.`);
+      this._toast(T("msg.paired", tv.name));
       this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
     } catch (err) {
-      this._toast("Code inconnu ou expiré. Vérifiez le code affiché sur la TV.", true);
+      this._toast(T("msg.badCode"), true);
+    }
+    this._render();
+  }
+
+  async _setScreenLang(language) {
+    try {
+      const res = await this._hass.callWS({ type: "domus_tv/language/set", language });
+      this._screenLang = res.language;
+      this._toast(T("lang.saved"));
+    } catch (err) {
+      this._toast(T("msg.error", err.message || err.code), true);
     }
     this._render();
   }
 
   async _revoke(tv) {
-    if (!confirm(`Retirer l'accès de « ${tv.name} » ? Il faudra l'associer à nouveau.`)) return;
+    if (!confirm(T("confirm.revoke", tv.name))) return;
     await this._hass.callWS({ type: "domus_tv/tv/revoke", tv_id: tv.id });
     this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
     this._render();
   }
 
   async _rename(tv) {
-    const name = prompt("Nom de l'écran", tv.name);
+    const name = prompt(T("prompt.screenName"), tv.name);
     if (!name) return;
     await this._hass.callWS({ type: "domus_tv/tv/rename", tv_id: tv.id, name });
     this._tvs = await this._hass.callWS({ type: "domus_tv/tv/list" });
@@ -271,7 +495,7 @@ class DomusTvPanel extends HTMLElement {
     const scrollers = [...root.querySelectorAll(".scroll")].map((e) => e.scrollTop);
     root.textContent = "";
     root.append(h("style", {}, STYLE));
-    if (!this._dashboards) { root.append(h("div", { class: "loading" }, "Chargement…")); return; }
+    if (!this._dashboards) { root.append(h("div", { class: "loading" }, T("loading"))); return; }
 
     root.append(
       h("header", {},
@@ -279,12 +503,12 @@ class DomusTvPanel extends HTMLElement {
         h("div", { class: "title" }, "Domus TV"),
         h("nav", {},
           h("button", { class: this._view === "editor" ? "tab active" : "tab", onclick: () => { this._view = "editor"; this._render(); } }, "Dashboards"),
-          h("button", { class: this._view === "tvs" ? "tab active" : "tab", onclick: () => { this._view = "tvs"; this._render(); } }, `Écrans (${this._tvs.length})`),
+          h("button", { class: this._view === "tvs" ? "tab active" : "tab", onclick: () => { this._view = "tvs"; this._render(); } }, T("tab.screens", this._tvs.length)),
         ),
         h("div", { class: "spacer" }),
         this._msg ? h("div", { class: this._msgErr ? "msg err" : "msg" }, this._msg) : null,
         h("button", { class: "primary", disabled: !this._dirty(), onclick: () => this._save() },
-          this._dirty() ? "Enregistrer" : "Enregistré"),
+          this._dirty() ? T("btn.save") : T("btn.saved")),
       ),
       this._view === "tvs" ? this._renderTvs() : this._renderEditor(),
     );
@@ -306,8 +530,7 @@ class DomusTvPanel extends HTMLElement {
         ),
         this._renderPreview(dash),
         h("p", { class: "hint" },
-          "Glissez une tuile pour la déplacer. Sur la TV : flèches pour naviguer, OK pour agir, ⓘ pour les réglages fins, P+/P- ou chiffres pour changer de dashboard. ",
-          "La ligne pointillée marque le bas de l'écran (le reste défile)."),
+          T("hint.editor")),
       ),
       h("aside", { class: "scroll" }, this._sel ? this._renderTileForm() : this._renderDashForm()),
     );
@@ -346,7 +569,7 @@ class DomusTvPanel extends HTMLElement {
         ondrop: (e) => { e.preventDefault(); this._drop(t.id); },
       });
       if (type === "header") {
-        el.append(h("span", { class: "hname" }, t.name || "Titre"));
+        el.append(h("span", { class: "hname" }, t.name || T("tile.title")));
       } else if (type === "camera" && st && st.attributes.entity_picture) {
         el.append(h("img", { src: st.attributes.entity_picture, alt: "" }), h("span", { class: "camname" }, this._name(t)));
         const nCamLinks = (t.links || []).filter(Boolean).length;
@@ -358,7 +581,7 @@ class DomusTvPanel extends HTMLElement {
           h("div", { class: "st", "data-state-for": t.entity }, this._stateText(t.entity)),
         );
         const nLinks = (t.links || []).filter(Boolean).length;
-        if (nLinks) el.append(h("span", { class: "badge", title: `${nLinks} action(s) liée(s)` }, `+${nLinks}`));
+        if (nLinks) el.append(h("span", { class: "badge", title: T("links.count", nLinks) }, `+${nLinks}`));
         if (type === "sensor" && t.graph) {
           el.insertAdjacentHTML("beforeend",
             '<svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M0,22 C15,18 25,26 40,16 S65,8 80,14 S95,6 100,9" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>');
@@ -367,7 +590,7 @@ class DomusTvPanel extends HTMLElement {
       tv.append(el);
     }
     if (!dash.tiles.length) {
-      tv.append(h("div", { class: "tvempty" }, "Dashboard vide : ajoutez des tuiles ou une pièce entière à droite."));
+      tv.append(h("div", { class: "tvempty" }, T("dash.emptyPreview")));
     }
     return tv;
   }
@@ -378,28 +601,28 @@ class DomusTvPanel extends HTMLElement {
     let areaSel;
     return h("div", { class: "form" },
       h("h3", {}, "Dashboard"),
-      h("label", {}, "Nom",
+      h("label", {}, T("f.name"),
         h("input", { value: dash.title, maxlength: "30", oninput: (e) => { dash.title = e.target.value; }, onchange: () => this._render() })),
-      h("label", {}, "Icône (facultatif, ex. mdi:sofa)",
+      h("label", {}, T("f.dashIcon"),
         h("input", { value: dash.icon || "", placeholder: "mdi:home", onchange: (e) => { dash.icon = e.target.value.trim(); this._render(); } })),
-      h("label", {}, "Colonnes",
+      h("label", {}, T("f.columns"),
         h("select", { onchange: (e) => this._change(() => { dash.columns = +e.target.value; }) },
-          [3, 4, 5, 6, 7, 8].map((n) => h("option", { value: n, selected: n === dash.columns }, `${n} colonnes (${Math.floor(visibleRows(n))} rangées visibles)`)))),
+          [3, 4, 5, 6, 7, 8].map((n) => h("option", { value: n, selected: n === dash.columns }, T("f.columnsOpt", n, Math.floor(visibleRows(n))))))),
       h("div", { class: "row" },
-        h("button", { onclick: () => this._moveDashboard(-1), disabled: this._dash === 0 }, "◀ Avant"),
-        h("button", { onclick: () => this._moveDashboard(1), disabled: this._dash === this._dashboards.length - 1 }, "Après ▶"),
-        h("button", { class: "danger", onclick: () => this._removeDashboard() }, "Supprimer"),
+        h("button", { onclick: () => this._moveDashboard(-1), disabled: this._dash === 0 }, T("btn.before")),
+        h("button", { onclick: () => this._moveDashboard(1), disabled: this._dash === this._dashboards.length - 1 }, T("btn.after")),
+        h("button", { class: "danger", onclick: () => this._removeDashboard() }, T("btn.delete")),
       ),
-      h("h3", {}, "Ajouter"),
+      h("h3", {}, T("f.add")),
       h("div", { class: "row" },
-        h("button", { class: "primary", onclick: () => this._addTile() }, "+ Tuile"),
-        h("button", { onclick: () => this._addTile("", "header") }, "+ Titre de section"),
+        h("button", { class: "primary", onclick: () => this._addTile() }, T("btn.addTile")),
+        h("button", { onclick: () => this._addTile("", "header") }, T("btn.addHeader")),
       ),
-      areas.length ? h("label", {}, "Toute une pièce",
+      areas.length ? h("label", {}, T("f.wholeRoom"),
         h("div", { class: "row" },
           areaSel = h("select", {}, areas.map((a) => h("option", { value: a.area_id }, a.name))),
-          h("button", { onclick: () => this._addArea(areaSel.value) }, "Ajouter"))) : null,
-      h("p", { class: "hint" }, `${dash.tiles.length} tuile(s). Cliquez une tuile de l'aperçu pour la modifier.`),
+          h("button", { onclick: () => this._addArea(areaSel.value) }, T("f.add")))) : null,
+      h("p", { class: "hint" }, T("hint.tiles", dash.tiles.length)),
     );
   }
 
@@ -414,121 +637,117 @@ class DomusTvPanel extends HTMLElement {
 
     return h("div", { class: "form" },
       h("div", { class: "row between" },
-        h("h3", {}, type === "header" ? "Titre de section" : "Tuile"),
-        h("button", { class: "link", onclick: () => { this._sel = null; this._render(); } }, "✕ Fermer"),
+        h("h3", {}, type === "header" ? T("type.header") : T("f.tile")),
+        h("button", { class: "link", onclick: () => { this._sel = null; this._render(); } }, T("btn.close")),
       ),
-      type !== "header" ? h("label", {}, "Entité",
-        h("input", { id: "f-entity", list: "entities", value: t.entity, placeholder: "Rechercher : salon, light.…",
+      type !== "header" ? h("label", {}, T("f.entity"),
+        h("input", { id: "f-entity", list: "entities", value: t.entity, placeholder: T("f.search"),
           onchange: (e) => {
             const v = e.target.value.trim();
             t.entity = v;
             if (t.type === "auto") Object.assign(t, defaultSize(defaultType(v), dash.columns));
             this._change(() => {});
           } }), list,
-        t.entity && !this._hass.states[t.entity] ? h("span", { class: "warn" }, "Entité introuvable") : null) : null,
-      h("label", {}, "Type",
+        t.entity && !this._hass.states[t.entity] ? h("span", { class: "warn" }, T("warn.noEntity")) : null) : null,
+      h("label", {}, T("f.type"),
         h("select", { onchange: (e) => set("type", e.target.value, true) },
-          TYPES.map(([v, l]) => h("option", { value: v, selected: v === (t.type || "auto") }, v === "auto" && t.entity ? `${l} (${TYPES.find((x) => x[0] === defaultType(t.entity))[1]})` : l)))),
-      h("label", {}, type === "header" ? "Texte" : "Nom affiché (vide = nom de l'entité)",
+          TYPE_IDS.map((v) => h("option", { value: v, selected: v === (t.type || "auto") }, v === "auto" && t.entity ? `${typeLabel(v)} (${typeLabel(defaultType(t.entity))})` : typeLabel(v))))),
+      h("label", {}, type === "header" ? T("f.text") : T("f.displayName"),
         h("input", { value: t.name, maxlength: "60", oninput: (e) => { t.name = e.target.value; }, onchange: () => this._render() })),
-      type !== "header" ? h("label", {}, "Icône (vide = icône de l'entité)",
+      type !== "header" ? h("label", {}, T("f.icon"),
         h("div", { class: "row" },
           h("input", { value: t.icon, placeholder: "mdi:lightbulb", onchange: (e) => set("icon", e.target.value.trim()) }),
           h("span", { class: "iconprev" }, this._icon(t)))) : null,
-      h("label", {}, "Couleur quand actif",
+      h("label", {}, T("f.color"),
         h("div", { class: "colors" }, COLORS.map((c) => h("button", {
           class: t.color === c ? "sw cur" : "sw", style: { background: c || "var(--primary-color)" },
-          title: c || "Couleur par défaut", onclick: () => set("color", c),
+          title: c || T("f.defaultColor"), onclick: () => set("color", c),
         }, c ? "" : "A")))),
-      type === "sensor" ? h("label", {}, "Graphique (valeurs numériques)",
+      type === "sensor" ? h("label", {}, T("f.graph"),
         h("select", { onchange: (e) => set("graph", +e.target.value) },
-          [[0, "Aucun"], [6, "6 heures"], [24, "24 heures"], [48, "48 heures"], [168, "7 jours"]].map(([v, l]) =>
+          [[0, T("graph.none")], [6, T("graph.hours", 6)], [24, T("graph.hours", 24)], [48, T("graph.hours", 48)], [168, T("graph.days", 7)]].map(([v, l]) =>
             h("option", { value: v, selected: (t.graph || 0) === v }, l)))) : null,
       type !== "header" ? h("div", { class: "linkbox" },
-        h("div", { class: "lbl" }, "Actions liées"),
-        h("p", { class: "hint" }, "Boutons affichés dans le panneau Info et sur la caméra en plein écran (ex. portail, serrure, éclairage)."),
+        h("div", { class: "lbl" }, T("f.links")),
+        h("p", { class: "hint" }, T("hint.links")),
         (t.links || []).map((eid, i) => h("div", { class: "row" },
-          h("input", { list: "entities", value: eid, placeholder: "Rechercher une entité…", "data-link": i,
+          h("input", { list: "entities", value: eid, placeholder: T("f.searchEntity"), "data-link": i,
             onchange: (e) => { t.links[i] = e.target.value.trim(); this._render(); } }),
           h("span", { class: "iconprev" }, eid && this._hass.states[eid] ? this._icon({ entity: eid }) : ""),
-          h("button", { class: "link", title: "Retirer", onclick: () => { t.links.splice(i, 1); this._render(); } }, "✕"))),
+          h("button", { class: "link", title: T("btn.remove"), onclick: () => { t.links.splice(i, 1); this._render(); } }, "✕"))),
         (t.links || []).length < 4 ? h("button", { onclick: () => {
           t.links = (t.links || []).concat([""]); this._render();
           const inputs = this.shadowRoot.querySelectorAll("[data-link]"); if (inputs.length) inputs[inputs.length - 1].focus();
-        } }, "+ Ajouter une action") : null) : null,
+        } }, T("btn.addLink")) : null) : null,
       h("div", { class: "row" },
-        h("label", {}, "Largeur",
+        h("label", {}, T("f.width"),
           h("select", { onchange: (e) => set("w", +e.target.value, true) },
             Array.from({ length: dash.columns }, (_, i) => i + 1).map((n) => h("option", { value: n, selected: n === t.w }, n)))),
-        type === "header" ? null : h("label", {}, "Hauteur",
+        type === "header" ? null : h("label", {}, T("f.height"),
           h("select", { onchange: (e) => set("h", +e.target.value, true) },
             [1, 2, 3, 4].map((n) => h("option", { value: n, selected: n === t.h }, n)))),
       ),
       h("div", { class: "row" },
-        h("button", { onclick: () => this._move(t.id, -1), disabled: idx === 0 }, "◀ Avant"),
-        h("button", { onclick: () => this._move(t.id, 1), disabled: idx === dash.tiles.length - 1 }, "Après ▶"),
+        h("button", { onclick: () => this._move(t.id, -1), disabled: idx === 0 }, T("btn.before")),
+        h("button", { onclick: () => this._move(t.id, 1), disabled: idx === dash.tiles.length - 1 }, T("btn.after")),
       ),
       h("div", { class: "row" },
-        h("button", { onclick: () => { const c = { ...clone(t), id: uid() }; this._change(() => dash.tiles.splice(idx + 1, 0, c)); this._sel = c.id; this._render(); } }, "Dupliquer"),
-        h("button", { class: "danger", onclick: () => this._removeTile(t.id) }, "Supprimer"),
+        h("button", { onclick: () => { const c = { ...clone(t), id: uid() }; this._change(() => dash.tiles.splice(idx + 1, 0, c)); this._sel = c.id; this._render(); } }, T("btn.duplicate")),
+        h("button", { class: "danger", onclick: () => this._removeTile(t.id) }, T("btn.delete")),
       ),
-      h("p", { class: "hint" }, HELP[type] || ""),
+      h("p", { class: "hint" }, HELP(type)),
     );
   }
 
   _renderTvs() {
     let code, name;
-    const fmt = (s) => (s ? new Date(s * 1000).toLocaleString() : "jamais");
+    const fmt = (s) => (s ? new Date(s * 1000).toLocaleString() : T("never"));
     return h("main", { class: "single" },
       h("section", { class: "card" },
-        h("h3", {}, "Associer une TV"),
+        h("h3", {}, T("pair.title")),
         h("ol", {},
-          h("li", {}, "Installez l'app Domus sur la TV ou le Freebox Player et ouvrez-la (pour un écran mural, voir plus bas)."),
-          h("li", {}, "Saisissez l'adresse de Home Assistant avec la télécommande."),
-          h("li", {}, "Recopiez ici le code à 6 chiffres affiché sur la TV.")),
+          h("li", {}, T("pair.step1")),
+          h("li", {}, T("pair.step2")),
+          h("li", {}, T("pair.step3"))),
         h("div", { class: "row" },
           code = h("input", { class: "code", inputmode: "numeric", maxlength: "7", placeholder: "123 456",
             onkeydown: (e) => { if (e.key === "Enter") this._pair(code.value, name.value); } }),
-          name = h("input", { placeholder: "Nom (ex. TV salon)", maxlength: "40" }),
-          h("button", { class: "primary", onclick: () => this._pair(code.value, name.value) }, "Associer"),
+          name = h("input", { placeholder: T("pair.namePh"), maxlength: "40" }),
+          h("button", { class: "primary", onclick: () => this._pair(code.value, name.value) }, T("pair.btn")),
         ),
-        h("p", { class: "hint" }, "L'écran reçoit un jeton d'accès longue durée lié à votre compte. Vous pouvez le retirer ici à tout moment."),
+        h("p", { class: "hint" }, T("pair.hint")),
       ),
       h("section", { class: "card" },
-        h("h3", {}, "Écran mural ou navigateur"),
-        h("p", {}, "Ouvrez cette adresse sur la tablette ou l'écran (en plein écran, par exemple avec Fully Kiosk Browser), puis associez-le avec le code affiché, comme une TV :"),
+        h("h3", {}, T("wall.title")),
+        h("p", {}, T("wall.text")),
         h("p", {}, h("a", { href: `${location.origin}/domus_tv/screen`, target: "_blank", class: "screenurl" }, `${location.origin}/domus_tv/screen`)),
-        h("p", { class: "hint" }, "Options à ajouter à l'adresse : ?dash=2 pour ouvrir le 2e dashboard, &name=Cuisine pour nommer l'écran. Toucher une tuile agit, un appui long ouvre ses détails, glisser fait défiler."),
+        h("p", { class: "hint" }, T("wall.hint")),
       ),
       h("section", { class: "card" },
-        h("h3", {}, "Écrans associés"),
+        h("h3", {}, T("lang.title")),
+        h("select", { class: "langsel", onchange: (e) => this._setScreenLang(e.target.value) },
+          [["auto", T("lang.auto", (this._hass.config && this._hass.config.language) || "en")], ...SCREEN_LANGS].map(([v, l]) =>
+            h("option", { value: v, selected: v === (this._screenLang || "auto") }, l))),
+        h("p", { class: "hint" }, T("lang.hint")),
+      ),
+      h("section", { class: "card" },
+        h("h3", {}, T("tvs.title")),
         this._tvs.length ? h("table", {},
-          h("tr", {}, h("th", {}, "Nom"), h("th", {}, "Associé le"), h("th", {}, "Dernier contact"), h("th", {})),
+          h("tr", {}, h("th", {}, T("f.name")), h("th", {}, T("tvs.paired")), h("th", {}, T("tvs.lastSeen")), h("th", {})),
           this._tvs.map((tv) => h("tr", {},
-            h("td", {}, tv.name, tv.valid ? "" : h("span", { class: "warn" }, " (jeton supprimé)")),
+            h("td", {}, tv.name, tv.valid ? "" : h("span", { class: "warn" }, T("tvs.tokenGone"))),
             h("td", {}, fmt(tv.created)),
             h("td", {}, fmt(tv.last_seen)),
             h("td", { class: "actions" },
-              h("button", { onclick: () => this._rename(tv) }, "Renommer"),
-              h("button", { class: "danger", onclick: () => this._revoke(tv) }, "Retirer")),
-          ))) : h("p", { class: "hint" }, "Aucun écran associé pour l'instant."),
+              h("button", { onclick: () => this._rename(tv) }, T("btn.rename")),
+              h("button", { class: "danger", onclick: () => this._revoke(tv) }, T("btn.remove"))),
+          ))) : h("p", { class: "hint" }, T("tvs.none")),
       ),
     );
   }
 }
 
-const HELP = {
-  light: "OK allume/éteint. ⓘ ouvre le réglage : ◀ ▶ changent la luminosité.",
-  toggle: "OK allume/éteint.",
-  button: "OK lance la scène, le script ou le bouton.",
-  sensor: "Affiche la valeur en grand, avec une courbe si « Graphique » est choisi. ⓘ montre le détail et la courbe des dernières 24 h.",
-  cover: "OK ouvre/ferme (ou démarre le portail). ⓘ : ouvrir, stop, fermer, position avec ◀ ▶.",
-  climate: "◀ ▶ dans ⓘ changent la consigne ; OK change le mode.",
-  camera: "Image rafraîchie toutes les 3 s (chaque seconde en plein écran). OK l'affiche en plein écran, avec les actions liées en bas de l'image.",
-  lock: "OK verrouille/déverrouille (confirmation demandée sur la TV).",
-  media: "OK lecture/pause. ⓘ : piste, volume.",
-  header: "Un titre pour séparer les groupes de tuiles.",
-};
+const HELP = (type) => (STR.en["help." + type] ? T("help." + type) : "");
 
 const STYLE = `
 :host { display:block; height:100%; background:var(--primary-background-color); color:var(--primary-text-color);

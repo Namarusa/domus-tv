@@ -13,7 +13,7 @@ from .const import DOMAIN
 
 @callback
 def async_register_commands(hass: HomeAssistant) -> None:
-    for handler in (ws_get, ws_save, ws_pair, ws_tv_list, ws_tv_revoke, ws_tv_rename):
+    for handler in (ws_get, ws_save, ws_set_language, ws_pair, ws_tv_list, ws_tv_revoke, ws_tv_rename):
         websocket_api.async_register_command(hass, handler)
 
 
@@ -33,6 +33,22 @@ def ws_get(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
     if data is None:
         return _not_loaded(connection, msg)
     connection.send_result(msg["id"], data.layout())
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "domus_tv/language/set",
+        vol.Required("language"): vol.All(str, vol.Match(r"^(auto|[a-z]{2}(-[A-Za-z]{2,4})?)$")),
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_set_language(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    data = _data(hass)
+    if data is None:
+        return _not_loaded(connection, msg)
+    version = await data.async_set_language(msg["language"])
+    connection.send_result(msg["id"], {"version": version, "language": data.language_setting})
 
 
 @websocket_api.websocket_command(

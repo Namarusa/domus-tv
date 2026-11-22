@@ -36,10 +36,10 @@ FocusScope {
         if (!ipMode) return hostUrl;
         for (var i = 0; i < 4; i++) {
             var n = parseInt(parts[i], 10);
-            if (isNaN(n) || n > 255) { error = "Le nombre " + (i + 1) + " doit être entre 0 et 255"; return ""; }
+            if (isNaN(n) || n > 255) { error = app.tr("setup.err.byte", i + 1); return ""; }
         }
         var port = parseInt(parts[4], 10);
-        if (isNaN(port) || port < 1 || port > 65535) { error = "Port invalide"; return ""; }
+        if (isNaN(port) || port < 1 || port > 65535) { error = app.tr("setup.err.port"); return ""; }
         return (https ? "https" : "http") + "://" + parts.slice(0, 4).join(".") + ":" + port;
     }
 
@@ -111,7 +111,7 @@ FocusScope {
             wrapMode: Text.WordWrap
             color: Theme.text2
             font.pixelSize: 24
-            text: "Adresse de votre Home Assistant"
+            text: app.tr("setup.title")
         }
 
         // IP editor
@@ -169,8 +169,8 @@ FocusScope {
             color: root.error ? Theme.error : Theme.text3
             font.pixelSize: 20
             text: root.error ? root.error
-                : root.ipMode ? "Chiffres : saisir · Gauche/Droite : changer de case · Haut/Bas : ajuster · OK : continuer"
-                : "OK pour continuer · tapez un chiffre pour saisir une adresse IP"
+                : root.ipMode ? app.tr("setup.hint.ip")
+                : app.tr("setup.hint.host")
         }
     }
 }

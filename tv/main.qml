@@ -3,6 +3,7 @@ import fbx.application 1.0
 import "qml"
 import "js/config.js" as Config
 import "js/theme.js" as Theme
+import "js/i18n.js" as I18n
 
 Application {
     id: app
@@ -16,6 +17,15 @@ Application {
     property int failures: 0
     property string notice: ""
     property var pending: []                // in-flight requests (for timeouts)
+    property string lang: "en"              // display language (from Home Assistant, else the Player's locale)
+
+    function setLanguage(l) {
+        var n = I18n.setLang(l);
+        settings.lang = n;
+        if (n !== lang) { lang = n; statesRevision++; }
+    }
+    // Translated text. Reading `lang` makes bindings refresh when the language changes.
+    function tr(key, a, b) { return lang ? I18n.t(key, a, b) : key; }
 
     FontLoader { id: mdiFont; source: "fonts/materialdesignicons-webfont.ttf" }
     property string iconFont: mdiFont.name
@@ -26,6 +36,7 @@ Application {
         property string token: ""
         property string tvId: ""
         property int dashIndex: 0
+        property string lang: ""
         onReady: app.boot()
     }
 
@@ -35,6 +46,7 @@ Application {
     function boot() {
         if (screen !== "boot") return;
         if (!settings.haUrl) settings.haUrl = Config.DEFAULT_URL;
+        setLanguage(settings.lang || Qt.locale().name);
         screen = settings.token ? "dash" : "setup";
         if (screen === "dash") loadLayout();
     }
@@ -79,7 +91,7 @@ Application {
     function tokenRejected() {
         settings.token = "";
         layout = null;
-        notice = "Home Assistant a refusé l'accès (Player retiré ?). Associez-le à nouveau.";
+        notice = tr("notice.revoked");
         screen = "pair";
     }
 
@@ -87,6 +99,7 @@ Application {
     function loadLayout() {
         request("GET", "/api/domus_tv/layout", null, true, function(status, data) {
             if (status === 200 && data) {
+                if (data.language) setLanguage(data.language);
                 layout = data;
                 if (settings.dashIndex >= data.dashboards.length) settings.dashIndex = 0;
                 online = true; failures = 0;
@@ -130,7 +143,7 @@ Application {
                 states = copy;
                 statesRevision++;
             } else if (status !== 200) {
-                toast.show(data && data.message ? data.message : "Action impossible (" + status + ")", true);
+                toast.show(data && data.message ? data.message : tr("action.failed", status), true);
             }
             if (onDone) onDone(status === 200);
         });

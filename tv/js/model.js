@@ -1,10 +1,11 @@
 .pragma library
+.import "i18n.js" as I18n
 // Layout, icons, state text and detail-panel rows. ES5 only (Freebox Player JS engine).
 
 function pad2(n) { return n < 10 ? "0" + n : "" + n; }
 // dd/MM hh:mm without Qt, so the same file runs in a browser.
 function fmtDate(dt, withA) {
-    return pad2(dt.getDate()) + "/" + pad2(dt.getMonth() + 1) + (withA ? " à " : " ") + pad2(dt.getHours()) + ":" + pad2(dt.getMinutes());
+    return pad2(dt.getDate()) + "/" + pad2(dt.getMonth() + 1) + (withA ? " " + I18n.t("date.at") + " " : " ") + pad2(dt.getHours()) + ":" + pad2(dt.getMinutes());
 }
 
 // ---- layout: keep in sync with ha/custom_components/domus_tv/frontend/layout.js
@@ -116,35 +117,14 @@ function name(tile, st) {
     return tile.entity || "";
 }
 
-var LABELS = {
-    on: "Allumé", off: "Éteint", open: "Ouvert", closed: "Fermé", opening: "Ouverture…", closing: "Fermeture…",
-    locked: "Verrouillé", unlocked: "Déverrouillé", locking: "Verrouillage…", unlocking: "Déverrouillage…", jammed: "Bloqué",
-    heating: "Chauffe", cooling: "Refroidit", drying: "Déshumidifie", fan: "Ventile", preheating: "Préchauffe", defrosting: "Dégivrage",
-    playing: "Lecture", paused: "Pause", idle: "Inactif", standby: "Veille", buffering: "Chargement",
-    unavailable: "Indisponible", unknown: "Inconnu", home: "Présent", not_home: "Absent",
-    heat: "Chauffage", cool: "Climatisation", auto: "Auto", heat_cool: "Auto", dry: "Déshumidification", fan_only: "Ventilation",
-    armed_away: "Alarme absente", armed_home: "Alarme présence", armed_night: "Alarme nuit", disarmed: "Désarmée", triggered: "Déclenchée",
-    sunny: "Ensoleillé", cloudy: "Nuageux", partlycloudy: "Éclaircies", rainy: "Pluie", pouring: "Averses", snowy: "Neige",
-    fog: "Brouillard", "clear-night": "Nuit claire", windy: "Venteux", lightning: "Orage", "lightning-rainy": "Orage", hail: "Grêle",
-    streaming: "En direct", recording: "Enregistrement"
-};
-
-var BINARY = {
-    door: ["Ouverte", "Fermée"], garage_door: ["Ouverte", "Fermée"], window: ["Ouverte", "Fermée"], opening: ["Ouvert", "Fermé"],
-    motion: ["Mouvement", "Calme"], occupancy: ["Occupé", "Libre"], presence: ["Présent", "Absent"],
-    moisture: ["Humide", "Sec"], smoke: ["Fumée !", "OK"], gas: ["Gaz !", "OK"], problem: ["Problème", "OK"],
-    battery: ["Faible", "OK"], connectivity: ["Connecté", "Déconnecté"], plug: ["Branché", "Débranché"],
-    lock: ["Déverrouillé", "Verrouillé"], running: ["En marche", "Arrêté"], vibration: ["Vibration", "Calme"],
-    power: ["Sous tension", "Hors tension"], light: ["Lumière", "Sombre"], heat: ["Chaud", "Normal"], cold: ["Froid", "Normal"],
-    sound: ["Son détecté", "Calme"], safety: ["Danger", "OK"], tamper: ["Sabotage", "OK"], update: ["Mise à jour", "À jour"],
-    carbon_monoxide: ["CO !", "OK"], moving: ["En mouvement", "Immobile"], garage_door_opening: ["Ouvert", "Fermé"]
-};
+// State words come from i18n.js (I18n.stateLabel / I18n.binaryPair).
+function label(s) { return I18n.stateLabel(s); }
 
 function fmtNumber(v) {
     var n = parseFloat(v);
     if (isNaN(n) || String(v).match(/[^0-9.\-e+]/)) return null;
     var s = Math.abs(n) >= 100 ? Math.round(n).toString() : (Math.round(n * 10) / 10).toString();
-    return s.replace(".", ",");
+    return s.replace(".", I18n.decimal());
 }
 
 function isNumeric(st) { return !!st && fmtNumber(st.s) !== null; }
@@ -152,33 +132,33 @@ function isNumeric(st) { return !!st && fmtNumber(st.s) !== null; }
 function stateText(tile, st) {
     if (!st) return "…";
     var d = domainOf(tile.entity), a = st.a || {};
-    if (isUnavailable(st, tile.entity)) return LABELS[st.s];
+    if (isUnavailable(st, tile.entity)) return label(st.s);
     if (d === "binary_sensor") {
-        var pair = BINARY[a.device_class];
-        return pair ? (st.s === "on" ? pair[0] : pair[1]) : (st.s === "on" ? "Actif" : "Inactif");
+        var pair = I18n.binaryPair(a.device_class);
+        return pair ? (st.s === "on" ? pair[0] : pair[1]) : I18n.t(st.s === "on" ? "binary.on" : "binary.off");
     }
     if (d === "light" && st.s === "on" && a.brightness)
-        return "Allumé · " + Math.round(a.brightness / 2.55) + " %";
+        return I18n.t("state.lightOn", Math.round(a.brightness / 2.55));
     if (d === "cover" && a.current_position !== undefined && a.current_position !== null && st.s !== "closed")
-        return (LABELS[st.s] || st.s) + " · " + a.current_position + " %";
+        return label(st.s) + " · " + a.current_position + " %";
     if (d === "climate") {
         var cur = a.current_temperature !== undefined && a.current_temperature !== null ? fmtNumber(a.current_temperature) + "°" : "";
         var target = a.temperature !== undefined && a.temperature !== null ? " → " + fmtNumber(a.temperature) + "°" : "";
-        return st.s === "off" ? (cur ? cur + " · Arrêt" : "Arrêt") : cur + target;
+        return st.s === "off" ? (cur ? cur + " · " + I18n.t("state.off") : I18n.t("state.off")) : cur + target;
     }
     if (d === "media_player" && (st.s === "playing" || st.s === "paused") && a.media_title)
         return a.media_title + (a.media_artist ? " · " + a.media_artist : "");
     if (d === "weather" && a.temperature !== undefined)
-        return fmtNumber(a.temperature) + "° · " + (LABELS[st.s] || st.s);
-    if (d === "camera") return "Voir";
-    if (d === "scene" || d === "script" || d === "button" || d === "input_button") return d === "script" && st.s === "on" ? "En cours…" : "";
+        return fmtNumber(a.temperature) + "° · " + label(st.s);
+    if (d === "camera") return I18n.t("state.view");
+    if (d === "scene" || d === "script" || d === "button" || d === "input_button") return d === "script" && st.s === "on" ? I18n.t("state.running") : "";
     if (d === "sensor" && a.device_class === "timestamp") {
         var dt = new Date(st.s);
         return isNaN(dt.getTime()) ? st.s : fmtDate(dt, false);
     }
     var num = fmtNumber(st.s);
     if (num !== null) return num + (a.unit_of_measurement ? " " + a.unit_of_measurement : "");
-    return LABELS[st.s] || st.s;
+    return label(st.s);
 }
 
 // Default Material Design icon names (without "mdi:")
@@ -275,38 +255,38 @@ function detailRows(tile, st) {
     var type = effectiveType(tile), a = (st && st.a) || {}, rows = [];
     var feat = a.supported_features || 0;
     if (type === "light") {
-        rows.push({ kind: "button", label: isOn(st) ? "Éteindre" : "Allumer", action: "toggle", icon: "power" });
+        rows.push({ kind: "button", label: I18n.t(isOn(st) ? "row.turnOff" : "row.turnOn"), action: "toggle", icon: "power" });
         if (a.supported_color_modes && !(a.supported_color_modes.length === 1 && a.supported_color_modes[0] === "onoff"))
-            rows.push({ kind: "stepper", label: "Luminosité", value: a.brightness ? Math.round(a.brightness / 2.55) + " %" : "0 %",
+            rows.push({ kind: "stepper", label: I18n.t("row.brightness"), value: a.brightness ? Math.round(a.brightness / 2.55) + " %" : "0 %",
                         action: "brightness_step", step: 10, icon: "brightness-6" });
     } else if (type === "toggle") {
-        rows.push({ kind: "button", label: isOn(st) ? "Éteindre" : "Allumer", action: "toggle", icon: "power" });
+        rows.push({ kind: "button", label: I18n.t(isOn(st) ? "row.turnOff" : "row.turnOn"), action: "toggle", icon: "power" });
     } else if (type === "button") {
-        rows.push({ kind: "button", label: "Lancer", action: "press", icon: "play" });
+        rows.push({ kind: "button", label: I18n.t("row.run"), action: "press", icon: "play" });
     } else if (type === "cover") {
-        rows.push({ kind: "button", label: "Ouvrir", action: "open", icon: "arrow-up-bold" });
-        rows.push({ kind: "button", label: "Stop", action: "stop", icon: "stop" });
-        rows.push({ kind: "button", label: "Fermer", action: "close", icon: "arrow-down-bold" });
+        rows.push({ kind: "button", label: I18n.t("row.open"), action: "open", icon: "arrow-up-bold" });
+        rows.push({ kind: "button", label: I18n.t("row.stop"), action: "stop", icon: "stop" });
+        rows.push({ kind: "button", label: I18n.t("row.close"), action: "close", icon: "arrow-down-bold" });
         if (feat & 4)
-            rows.push({ kind: "stepper", label: "Position", value: (a.current_position !== undefined ? a.current_position : 0) + " %",
+            rows.push({ kind: "stepper", label: I18n.t("row.position"), value: (a.current_position !== undefined ? a.current_position : 0) + " %",
                         action: "position", absolute: a.current_position || 0, step: 10, icon: "arrow-expand-vertical" });
     } else if (type === "climate") {
         if (a.temperature !== undefined && a.temperature !== null)
-            rows.push({ kind: "stepper", label: "Consigne", value: fmtNumber(a.temperature) + " °", action: "temp_step", step: 1, icon: "thermometer" });
+            rows.push({ kind: "stepper", label: I18n.t("row.target"), value: fmtNumber(a.temperature) + " °", action: "temp_step", step: 1, icon: "thermometer" });
         if (a.hvac_modes && a.hvac_modes.length)
-            rows.push({ kind: "stepper", label: "Mode", value: LABELS[st.s] || st.s, action: "hvac_mode", modes: a.hvac_modes, icon: "tune" });
+            rows.push({ kind: "stepper", label: I18n.t("row.mode"), value: label(st.s), action: "hvac_mode", modes: a.hvac_modes, icon: "tune" });
     } else if (type === "lock") {
-        rows.push({ kind: "button", label: "Verrouiller", action: "lock", icon: "lock" });
-        rows.push({ kind: "button", label: "Déverrouiller", action: "unlock", icon: "lock-open-variant" });
+        rows.push({ kind: "button", label: I18n.t("row.lock"), action: "lock", icon: "lock" });
+        rows.push({ kind: "button", label: I18n.t("row.unlock"), action: "unlock", icon: "lock-open-variant" });
     } else if (type === "media") {
-        rows.push({ kind: "button", label: st && st.s === "playing" ? "Pause" : "Lecture", action: "media_play_pause", icon: "play-pause" });
-        rows.push({ kind: "button", label: "Suivant", action: "media_next_track", icon: "skip-next" });
-        rows.push({ kind: "button", label: "Précédent", action: "media_previous_track", icon: "skip-previous" });
-        rows.push({ kind: "stepper", label: "Volume", value: a.volume_level !== undefined ? Math.round(a.volume_level * 100) + " %" : "",
+        rows.push({ kind: "button", label: I18n.t(st && st.s === "playing" ? "row.pause" : "row.play"), action: "media_play_pause", icon: "play-pause" });
+        rows.push({ kind: "button", label: I18n.t("row.next"), action: "media_next_track", icon: "skip-next" });
+        rows.push({ kind: "button", label: I18n.t("row.prev"), action: "media_previous_track", icon: "skip-previous" });
+        rows.push({ kind: "stepper", label: I18n.t("row.volume"), value: a.volume_level !== undefined ? Math.round(a.volume_level * 100) + " %" : "",
                     action: "volume", icon: "volume-high" });
-        rows.push({ kind: "button", label: a.is_volume_muted ? "Rétablir le son" : "Couper le son", action: "volume_mute", icon: "volume-off" });
+        rows.push({ kind: "button", label: I18n.t(a.is_volume_muted ? "row.unmute" : "row.mute"), action: "volume_mute", icon: "volume-off" });
     } else if (type === "camera") {
-        rows.push({ kind: "button", label: "Plein écran", ui: "camera", icon: "fullscreen" });
+        rows.push({ kind: "button", label: I18n.t("row.fullscreen"), ui: "camera", icon: "fullscreen" });
     }
     return rows;
 }
@@ -325,7 +305,7 @@ function linkPrimary(entityId, st) { return primary({ entity: entityId, type: "a
 function stepAction(row, dir) {
     if (row.action === "hvac_mode") {
         var modes = row.modes, i = -1;
-        for (var k = 0; k < modes.length; k++) if ((LABELS[modes[k]] || modes[k]) === row.value) i = k;
+        for (var k = 0; k < modes.length; k++) if (label(modes[k]) === row.value) i = k;
         i = (i + dir + modes.length) % modes.length;
         return { action: "hvac_mode", value: modes[i] };
     }
@@ -340,11 +320,11 @@ function infoLines(tile, st) {
     var out = [];
     if (!st) return out;
     var a = st.a || {};
-    if (a.current_temperature !== undefined && a.current_temperature !== null) out.push(["Température", fmtNumber(a.current_temperature) + " °"]);
-    if (a.hvac_action) out.push(["Activité", LABELS[a.hvac_action] || a.hvac_action]);
-    if (a.humidity !== undefined) out.push(["Humidité", a.humidity + " %"]);
-    if (a.source) out.push(["Source", a.source]);
-    if (st.c) out.push(["Depuis", fmtDate(new Date(st.c * 1000), true)]);
-    out.push(["Entité", tile.entity]);
+    if (a.current_temperature !== undefined && a.current_temperature !== null) out.push([I18n.t("info.temperature"), fmtNumber(a.current_temperature) + " °"]);
+    if (a.hvac_action) out.push([I18n.t("info.activity"), label(a.hvac_action)]);
+    if (a.humidity !== undefined) out.push([I18n.t("info.humidity"), a.humidity + " %"]);
+    if (a.source) out.push([I18n.t("info.source"), a.source]);
+    if (st.c) out.push([I18n.t("info.since"), fmtDate(new Date(st.c * 1000), true)]);
+    out.push([I18n.t("info.entity"), tile.entity]);
     return out;
 }

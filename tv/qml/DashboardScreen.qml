@@ -57,7 +57,7 @@ FocusScope {
             confirmEntity = t.entity;
             confirmTimer.restart();
             var locked = app.states[t.entity] && app.states[t.entity].s === "locked";
-            toast.show("Appuyez encore sur OK pour " + (locked ? "déverrouiller" : "verrouiller") + " « " + Model.name(t, app.states[t.entity]) + " »");
+            toast.show(app.tr(locked ? "confirm.unlock" : "confirm.lock", Model.name(t, app.states[t.entity])));
             return;
         }
         confirmEntity = "";
@@ -90,7 +90,7 @@ FocusScope {
             if (!app.online || app.layout === null) { menu.open(); return; }
             if (exitArmed) Qt.quit();
             exitArmed = true; exitTimer.restart();
-            toast.show("Appuyez encore sur Retour pour quitter · Menu : réglages");
+            toast.show(app.tr("dash.exit"));
             return;
         }
         event.accepted = false;
@@ -134,7 +134,7 @@ FocusScope {
                 height: 34; width: offText.implicitWidth + 50; radius: 17; color: Theme.error
                 anchors.verticalCenter: parent.verticalCenter
                 Icon { name: "lan-disconnect"; size: 20; color: "white"; anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter }
-                Text { id: offText; text: "Home Assistant injoignable"; color: "white"; font.pixelSize: 17; anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter }
+                Text { id: offText; text: app.tr("dash.offline"); color: "white"; font.pixelSize: 17; anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter }
             }
             Text {
                 id: clock
@@ -180,16 +180,16 @@ FocusScope {
         visible: app.layout !== null && root.tiles.length === 0
         anchors.centerIn: parent
         spacing: 12
-        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Ce dashboard est vide"; color: Theme.text; font.pixelSize: 30 }
-        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Ajoutez des tuiles dans Home Assistant → Domus TV. Elles apparaîtront ici toutes seules."; color: Theme.text2; font.pixelSize: 20 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; text: app.tr("dash.empty"); color: Theme.text; font.pixelSize: 30 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; text: app.tr("dash.emptyHint"); color: Theme.text2; font.pixelSize: 20 }
     }
     Column {
         visible: app.layout === null
         anchors.centerIn: parent
         spacing: 14
-        Text { anchors.horizontalCenter: parent.horizontalCenter; text: app.online ? "Chargement…" : "Connexion à Home Assistant…"; color: Theme.text2; font.pixelSize: 26 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; text: app.tr(app.online ? "dash.loading" : "dash.connecting"); color: Theme.text2; font.pixelSize: 26 }
         Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !app.online; text: settings.haUrl; color: Theme.text3; font.pixelSize: 20 }
-        Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !app.online; text: "OK : changer d'adresse ou réessayer"; color: Theme.text; font.pixelSize: 20 }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; visible: !app.online; text: app.tr("dash.offlineHint"); color: Theme.text; font.pixelSize: 20 }
     }
 
     // ---------------------------------------------------------------- overlays

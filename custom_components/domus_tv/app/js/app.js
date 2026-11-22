@@ -49,9 +49,18 @@ function param(name) {
     var m = new RegExp("[?&]" + name + "=([^&]*)").exec(window.location.search);
     return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
 }
-var THIS_SCREEN = HOSTED || platform === "browser" ? "cet écran" : "cette TV";
-var DEVICE_NAME = param("name") || (HOSTED ? "Écran mural"
-    : { webos: "TV LG", tizen: "TV Samsung", android: "Android TV", browser: "Navigateur" }[platform]);
+// Display language: Home Assistant's (sent with the layout and pairing), else this device's.
+I18n.setLang(store.get("lang", "") || navigator.language || "en");
+function setLanguage(l) {
+    var before = I18n.lang(), n = I18n.setLang(l);
+    store.set("lang", n);
+    if (n !== before) relabel();
+}
+function thisScreen() { return I18n.t(HOSTED || platform === "browser" ? "this.screen" : "this.tv"); }
+function deviceName() {
+    return param("name") || (HOSTED ? I18n.t("device.wall")
+        : { webos: "TV LG", tizen: "TV Samsung", android: "Android TV", browser: I18n.t("device.browser") }[platform]);
+}
 if (POINTER) document.documentElement.className += " pointer";
 
 if (platform === "tizen") {
@@ -132,7 +141,7 @@ function request(method, path, body, auth, cb) {
 function tokenRejected() {
     app.token = ""; store.set("token", "");
     app.layout = null;
-    app.notice = "Home Assistant a refusé l'accès (écran retiré ?). Associez-le à nouveau.";
+    app.notice = I18n.t("notice.revoked");
     show("pair");
 }
 
@@ -142,6 +151,7 @@ function loadLayout() {
     clearTimeout(retryLayoutTimer);
     request("GET", "/api/domus_tv/layout", null, true, function (status, data) {
         if (status === 200 && data) {
+            if (data.language) setLanguage(data.language);
             app.layout = data;
             if (app.dashIndex >= data.dashboards.length) setDash(0);
             app.online = true; app.failures = 0;
@@ -189,7 +199,7 @@ function runAction(entity, action, value, onDone) {
             app.states[entity] = data.state;
             statesChanged();
         } else if (status !== 200) {
-            Toast.show(data && data.message ? data.message : "Action impossible (" + status + ")", true);
+            Toast.show(data && data.message ? data.message : I18n.t("action.failed", status), true);
         }
         if (onDone) onDone(status === 200);
     });
@@ -315,10 +325,10 @@ var Setup = {
         if (!this.ipMode) return this.hostUrl;
         for (var i = 0; i < 4; i++) {
             var n = parseInt(this.parts[i], 10);
-            if (isNaN(n) || n > 255) { this.error = "Le nombre " + (i + 1) + " doit être entre 0 et 255"; return ""; }
+            if (isNaN(n) || n > 255) { this.error = I18n.t("setup.err.byte", i + 1); return ""; }
         }
         var port = parseInt(this.parts[4], 10);
-        if (isNaN(port) || port < 1 || port > 65535) { this.error = "Port invalide"; return ""; }
+        if (isNaN(port) || port < 1 || port > 65535) { this.error = I18n.t("setup.err.port"); return ""; }
         return (this.https ? "https" : "http") + "://" + this.parts.slice(0, 4).join(".") + ":" + port;
     },
     move: function (d) { this.seg = Math.max(0, Math.min(5, this.seg + d)); this.fresh = true; },
@@ -390,8 +400,7 @@ var Setup = {
             h += '<div class="host" data-seg="go">' + esc(this.hostUrl) + "</div>";
         }
         h += '<div class="hint' + (this.error ? " err" : "") + '">' + esc(this.error ? this.error
-            : this.ipMode ? "Chiffres : saisir · Gauche/Droite : changer de case · Haut/Bas : ajuster · OK : continuer"
-            : "OK pour continuer · tapez un chiffre pour saisir une adresse IP") + "</div>";
+            : I18n.t(this.ipMode ? "setup.hint.ip" : "setup.hint.host")) + "</div>";
         h += "</div>";
         $("setup").innerHTML = h;
     }
@@ -413,20 +422,21 @@ var Pair = {
         this.stop();
         this.status = "connecting"; this.message = "";
         this.render();
-        request("POST", "/api/domus_tv/pair/start", { name: DEVICE_NAME }, false, function (st, data) {
+        request("POST", "/api/domus_tv/pair/start", { name: deviceName() }, false, function (st, data) {
             if (!self.active) return;
             if (st === 200 && data && data.code) {
                 self.code = data.code; self.pollId = data.poll_id; self.home = data.home || "";
+                if (data.language) setLanguage(data.language);
                 self.remaining = data.expires_in || 600;
                 self.status = "waiting";
                 self.pollTimer = setInterval(function () { self.poll(); }, 2000);
                 self.countTimer = setInterval(function () { if (self.remaining > 0) self.remaining--; self.renderCount(); }, 1000);
             } else {
                 self.status = "error";
-                if (st === 0) self.message = "Home Assistant ne répond pas à " + app.haUrl + ". Vérifiez l'adresse et que la TV est sur le même réseau.";
-                else if (st === 404) self.message = "Home Assistant répond, mais l'intégration Domus TV n'est pas installée (Paramètres → Appareils et services → Ajouter → Domus TV).";
-                else if (st === 429) self.message = "Trop de demandes en attente. Nouvel essai dans quelques secondes…";
-                else self.message = "Erreur " + st + " en contactant Home Assistant.";
+                if (st === 0) self.message = I18n.t("pair.err.noanswer", app.haUrl);
+                else if (st === 404) self.message = I18n.t("pair.err.noint");
+                else if (st === 429) self.message = I18n.t("pair.err.busy");
+                else self.message = I18n.t("pair.err.other", st);
                 self.retryTimer = setTimeout(function () { self.start(); }, 6000);
             }
             self.render();
@@ -451,25 +461,25 @@ var Pair = {
     },
     countText: function () {
         var r = this.remaining;
-        return "En attente… code valable encore " + Math.floor(r / 60) + " min " + pad2(r % 60) + " s";
+        return I18n.t("pair.waiting", Math.floor(r / 60), pad2(r % 60));
     },
     renderCount: function () { var el = $("pair-count"); if (el) el.textContent = this.countText(); },
     render: function () {
         var h = '<div class="col w1000">';
-        h += '<div class="pair-title">' + esc(this.home ? "Associer " + THIS_SCREEN + " à « " + this.home + " »" : "Associer " + THIS_SCREEN) + "</div>";
+        h += '<div class="pair-title">' + esc(this.home ? I18n.t("pair.titleHome", thisScreen(), this.home) : I18n.t("pair.title", thisScreen())) + "</div>";
         if (app.notice) h += '<div class="sub warn w1000">' + esc(app.notice) + "</div>";
         if (this.status === "waiting") {
             h += '<div class="digits">';
             for (var i = 0; i < this.code.length; i++) h += '<span class="digit">' + esc(this.code.charAt(i)) + "</span>";
             h += "</div>";
-            h += '<div class="sub w1000">Dans Home Assistant, ouvrez <b>Domus TV</b> → <b>Écrans</b>, et saisissez ce code.</div>';
+            h += '<div class="sub w1000">' + I18n.t("pair.instructions") + "</div>";
             h += '<div class="hint" id="pair-count">' + esc(this.countText()) + "</div>";
         } else if (this.status === "connecting") {
-            h += '<div class="sub">' + esc("Connexion à " + app.haUrl + "…") + "</div>";
+            h += '<div class="sub">' + esc(I18n.t("pair.connecting", app.haUrl)) + "</div>";
         } else {
             h += '<div class="sub err w1000">' + esc(this.message) + "</div>";
         }
-        h += '<div class="hint" style="font-size:18px">' + (HOSTED ? "Touchez l'écran pour un nouveau code" : "Retour : changer l'adresse · OK : nouveau code") + "</div>";
+        h += '<div class="hint" style="font-size:18px">' + esc(I18n.t(HOSTED ? "pair.hint.touch" : "pair.hint")) + "</div>";
         h += "</div>";
         $("pair").innerHTML = h;
     }
@@ -510,7 +520,7 @@ var Dash = {
             h += "</span>";
         }
         h += '</div><div class="right">';
-        if (!app.online) h += '<span class="offline">' + icon("lan-disconnect") + "Home Assistant injoignable</span>";
+        if (!app.online) h += '<span class="offline">' + icon("lan-disconnect") + esc(I18n.t("dash.offline")) + "</span>";
         var t = new Date();
         h += '<span class="clock">' + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + "</span>";
         if (POINTER) h += '<span class="menubtn" data-cmd="menu">' + icon("menu") + "</span>";
@@ -518,8 +528,8 @@ var Dash = {
         el.innerHTML = h;
         var msg = $("dashmsg");
         if (msg) {
-            if (!app.layout) msg.innerHTML = '<div class="empty"><div style="font-size:26px;color:#9aa5b5">' + (app.online ? "Chargement…" : "Connexion à Home Assistant…") + "</div>"
-                + (app.online ? "" : '<div style="font-size:20px;color:#6b7585;margin-top:14px">' + esc(app.haUrl) + '</div><div style="font-size:20px;margin-top:14px">OK : changer d\'adresse ou réessayer</div>') + "</div>";
+            if (!app.layout) msg.innerHTML = '<div class="empty"><div style="font-size:26px;color:#9aa5b5">' + esc(I18n.t(app.online ? "dash.loading" : "dash.connecting")) + "</div>"
+                + (app.online ? "" : '<div style="font-size:20px;color:#6b7585;margin-top:14px">' + esc(app.haUrl) + '</div><div style="font-size:20px;margin-top:14px">' + esc(I18n.t("dash.offlineHint")) + '</div>') + "</div>";
             else if (!this.tiles.length) msg.innerHTML = '<div class="empty"><div style="font-size:30px">Ce dashboard est vide</div><div style="font-size:20px;color:#9aa5b5;margin-top:12px">Ajoutez des tuiles dans Home Assistant → Domus TV. Elles apparaîtront ici toutes seules.</div></div>';
             else msg.innerHTML = "";
         }
@@ -755,7 +765,7 @@ var Dash = {
             clearTimeout(this.confirmTimer);
             this.confirmTimer = setTimeout(function () { self.confirmEntity = ""; }, 4000);
             var locked = app.states[t.entity] && app.states[t.entity].s === "locked";
-            Toast.show("Appuyez encore sur OK pour " + (locked ? "déverrouiller" : "verrouiller") + " « " + Model.name(t, app.states[t.entity]) + " »");
+            Toast.show(I18n.t(locked ? "confirm.unlock" : "confirm.lock", Model.name(t, app.states[t.entity])));
             return;
         }
         this.confirmEntity = "";
@@ -784,7 +794,7 @@ var Dash = {
             if (this.exitArmed) { exitApp(); return; }
             this.exitArmed = true;
             setTimeout(function () { self.exitArmed = false; }, 2500);
-            Toast.show("Appuyez encore sur Retour pour quitter · Rouge : menu");
+            Toast.show(I18n.t("dash.exitRed"));
         }
     }
 };
@@ -810,7 +820,7 @@ var Details = {
         if (p.ui === "details") { this.open({ entity: id, type: "auto", name: "", icon: "", color: "", links: [] }); return; }
         if (p.ui === "confirm" && this.confirmEntity !== id) {
             this.confirmEntity = id;
-            Toast.show("Appuyez encore sur OK pour " + (lst && lst.s === "locked" ? "déverrouiller" : "verrouiller") + " « " + Model.name({ entity: id }, lst) + " »");
+            Toast.show(I18n.t(lst && lst.s === "locked" ? "confirm.unlock" : "confirm.lock", Model.name({ entity: id }, lst)));
             return;
         }
         this.confirmEntity = "";
@@ -848,11 +858,11 @@ var Details = {
         for (var i = 0; i < this.rows.length; i++) {
             var r = this.rows[i], sel = i === this.current ? " sel" : "";
             if (r.kind === "link") {
-                if (i === 0 || this.rows[i - 1].kind !== "link") h += '<div class="sect">Actions liées</div>';
+                if (i === 0 || this.rows[i - 1].kind !== "link") h += '<div class="sect">' + esc(I18n.t("details.linked")) + "</div>";
                 var lst = app.states[r.entity], ln = { entity: r.entity };
                 h += '<div class="row' + sel + '" data-row="' + i + '"><i class="mdi" style="color:' + (Model.isOn(lst) ? Theme.accent : Theme.text2) + '">' + Mdi.glyph(Model.icon(ln, lst)) + "</i>";
                 h += '<div class="lbl nowrap" style="width:210px">' + esc(Model.name(ln, lst)) + "</div>";
-                h += '<div class="val nowrap" style="width:120px">' + esc(this.confirmEntity === r.entity ? "OK pour confirmer" : Model.stateText(ln, lst)) + "</div></div>";
+                h += '<div class="val nowrap" style="width:120px">' + esc(this.confirmEntity === r.entity ? I18n.t("confirm.ok") : Model.stateText(ln, lst)) + "</div></div>";
             } else {
                 h += '<div class="row' + sel + '" data-row="' + i + '">' + icon(r.icon || "") + '<div class="lbl nowrap" style="width:220px">' + esc(r.label) + "</div>";
                 if (r.kind === "stepper") h += '<div class="step"><span class="hit" data-step="-1">' + icon("chevron-left") + "</span><span>" + esc(r.value || "") + '</span><span class="hit" data-step="1">' + icon("chevron-right") + "</span></div>";
@@ -862,17 +872,17 @@ var Details = {
         var numeric = Model.isNumeric(st) && Model.effectiveType(t) === "sensor";
         if (numeric) {
             var hs = this.hist;
-            h += '<div class="hhead"><span style="float:left">Dernières 24 h</span><span style="float:right">'
-                + (hs && hs.min !== null && hs.min !== undefined ? "min " + Model.fmtNumber(hs.min) + " · max " + Model.fmtNumber(hs.max) : "") + "</span></div>";
+            h += '<div class="hhead"><span style="float:left">' + esc(I18n.t("details.last24")) + '</span><span style="float:right">'
+                + (hs && hs.min !== null && hs.min !== undefined ? I18n.t("details.minmax", Model.fmtNumber(hs.min), Model.fmtNumber(hs.max)) : "") + "</span></div>";
             h += '<div class="histbox"><canvas id="dhist" style="position:absolute;left:10px;top:10px;width:376px;height:130px"></canvas>';
             if (!hs || !hs.points || !hs.points.length)
-                h += '<div class="msg">' + (hs && hs.recorder === false ? "Historique désactivé dans Home Assistant" : hs ? "Pas encore d'historique" : "Chargement…") + "</div>";
+                h += '<div class="msg">' + esc(I18n.t(hs && hs.recorder === false ? "details.noRecorder" : hs ? "details.noHistory" : "dash.loading")) + "</div>";
             h += "</div>";
         }
         var info = Model.infoLines(t, st);
         for (var j = 0; j < info.length; j++)
             h += '<div class="info"><span class="k">' + esc(info[j][0]) + '</span><span class="v">' + esc(info[j][1]) + "</span></div>";
-        h += '</div></div><div class="keyhint">' + (HOSTED ? "Touchez une ligne pour agir" : this.rows.length ? "Haut/Bas : choisir · OK ou Gauche/Droite : agir · Retour : fermer" : "Retour pour fermer") + "</div></div>";
+        h += '</div></div><div class="keyhint">' + esc(I18n.t(HOSTED ? "details.hintTouch" : this.rows.length ? "details.hint" : "details.hintClose")) + "</div></div>";
         var el = $("details");
         el.innerHTML = h;
         if (numeric && this.hist) drawGraph($("dhist"), this.hist.points, t.color || Theme.accent, 2.5, 0.18);
@@ -926,16 +936,16 @@ var Camera = {
     runAction: function (id) {
         var st = app.states[id], p = Model.linkPrimary(id, st), self = this;
         if (p.ui === "camera") { this.close(); this.open(this.cameras, id); return; }
-        if (p.ui === "details") { Toast.show("Utilisez le panneau Info du dashboard pour régler « " + Model.name({ entity: id }, st) + " »"); return; }
+        if (p.ui === "details") { Toast.show(I18n.t("camera.useInfo", Model.name({ entity: id }, st))); return; }
         if (p.ui === "confirm" && this.confirmEntity !== id) {
             this.confirmEntity = id;
-            Toast.show("Appuyez encore sur OK pour " + (st && st.s === "locked" ? "déverrouiller" : "verrouiller") + " « " + Model.name({ entity: id }, st) + " »");
+            Toast.show(I18n.t(st && st.s === "locked" ? "confirm.unlock" : "confirm.lock", Model.name({ entity: id }, st)));
             this.render();
             return;
         }
         this.confirmEntity = "";
         runAction(id, p.action, p.value, function (ok) {
-            if (ok) Toast.show("« " + Model.name({ entity: id }, app.states[id]) + " » : " + Model.stateText({ entity: id }, app.states[id]));
+            if (ok) Toast.show(I18n.t("toast.state", Model.name({ entity: id }, app.states[id]), Model.stateText({ entity: id }, app.states[id])));
         });
     },
 
@@ -959,8 +969,8 @@ var Camera = {
         var el = $("camera"), links = this.links(), n = this.cameras.length, cam = this.cameras[this.index];
         el.querySelector(".n").textContent = Model.name(cam, app.states[cam.entity]);
         el.querySelector(".h").textContent = links.length
-            ? "Gauche/Droite : choisir · OK : agir" + (n > 1 ? " · Haut/Bas : autre caméra" : "") + " · Retour : fermer"
-            : (n > 1 ? (this.index + 1) + "/" + n + " · Gauche/Droite : autre caméra · " : "") + "Retour : fermer";
+            ? I18n.t("camera.hintActions") + (n > 1 ? I18n.t("camera.hintOther") : "") + " · " + I18n.t("camera.hintClose")
+            : (n > 1 ? (this.index + 1) + "/" + n + " · " + I18n.t("camera.hintSwitch") : "") + I18n.t("camera.hintClose");
         var hint = el.querySelector(".camhint");
         hint.style.opacity = 1;
         clearTimeout(this.hintTimer);
@@ -970,7 +980,7 @@ var Camera = {
             var id = links[i], st = app.states[id], ln = { entity: id }, conf = this.confirmEntity === id;
             h += '<div class="act' + (i === this.action ? " sel" : "") + (Model.isOn(st) ? " on" : "") + '" data-act="' + i + '">' + icon(Model.icon(ln, st));
             h += '<div class="a1 nowrap">' + esc(Model.name(ln, st)) + '</div><div class="a2 nowrap' + (conf ? " warn" : "") + '">'
-                + esc(conf ? "OK pour confirmer" : Model.stateText(ln, st)) + "</div></div>";
+                + esc(conf ? I18n.t("confirm.ok") : Model.stateText(ln, st)) + "</div></div>";
         }
         el.querySelector(".actbar").innerHTML = h;
     }
@@ -985,10 +995,10 @@ var Menu = {
         var out = [], ds = Dash.dashboards();
         for (var i = 0; i < ds.length; i++)
             out.push({ label: (i + 1) + ". " + ds[i].title, icon: ds[i].icon ? ds[i].icon.replace("mdi:", "") : "view-dashboard", dash: i });
-        out.push({ label: "Recharger", icon: "refresh", cmd: "reload" });
-        if (!HOSTED) out.push({ label: "Changer d'adresse", icon: "server-network", cmd: "server" });
-        out.push({ label: this.confirmForget ? "Confirmer : oublier " + THIS_SCREEN : "Oublier " + THIS_SCREEN, icon: "link-off", cmd: "forget" });
-        if (!HOSTED && platform !== "browser") out.push({ label: "Quitter Domus", icon: "exit-to-app", cmd: "quit" });
+        out.push({ label: I18n.t("menu.reload"), icon: "refresh", cmd: "reload" });
+        if (!HOSTED) out.push({ label: I18n.t("menu.server"), icon: "server-network", cmd: "server" });
+        out.push({ label: I18n.t(this.confirmForget ? "menu.forgetConfirm" : "menu.forget", thisScreen()), icon: "link-off", cmd: "forget" });
+        if (!HOSTED && platform !== "browser") out.push({ label: I18n.t("menu.quit"), icon: "exit-to-app", cmd: "quit" });
         return out;
     },
     key: function (k) {
@@ -1026,10 +1036,18 @@ var Menu = {
                 + (e.cmd === "forget" && this.confirmForget ? " danger" : "") + '" data-m="' + i + '">' + icon(e.icon)
                 + '<div class="lbl nowrap">' + esc(e.label) + "</div></div>";
         }
-        h += '</div></div><div class="menufoot">Domus ' + esc(Config.VERSION) + " · « Oublier » ne retire pas l'accès dans HA</div></div>";
+        h += '</div></div><div class="menufoot">Domus ' + esc(Config.VERSION) + " · " + esc(I18n.t("menu.footer")) + "</div></div>";
         $("menu").innerHTML = h;
     }
 };
+
+// Language changed: redraw what is on screen.
+function relabel() {
+    if (app.screen === "setup") Setup.render();
+    else if (app.screen === "pair") Pair.render();
+    else if (app.screen === "dash") { Dash.cache = []; for (var i = 0; i < Dash.els.length; i++) Dash.cache.push({}); Dash.update(); Dash.loadGraphs(); }
+    for (var j = 0; j < stack.length; j++) if (stack[j].render) stack[j].render();
+}
 
 // ====================================================================== screens & overlays
 var SCREENS = { setup: Setup, pair: Pair, dash: Dash };

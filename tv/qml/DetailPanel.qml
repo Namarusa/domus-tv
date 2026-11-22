@@ -40,7 +40,7 @@ FocusScope {
         if (p.ui === "details") { open({ entity: id, type: "auto", name: "", icon: "", color: "", links: [] }); return; }
         if (p.ui === "confirm" && confirmEntity !== id) {
             confirmEntity = id;
-            toast.show("Appuyez encore sur OK pour " + (lst && lst.s === "locked" ? "déverrouiller" : "verrouiller") + " « " + Model.name({ entity: id }, lst) + " »");
+            toast.show(app.tr(lst && lst.s === "locked" ? "confirm.unlock" : "confirm.lock", Model.name({ entity: id }, lst)));
             return;
         }
         confirmEntity = "";
@@ -143,7 +143,7 @@ FocusScope {
                     Text {
                         visible: parent.firstLink
                         y: 4
-                        text: "Actions liées"; color: Theme.text3; font.pixelSize: 16
+                        text: app.tr("details.linked"); color: Theme.text3; font.pixelSize: 16
                     }
                 Rectangle {
                     y: parent.firstLink ? 34 : 0
@@ -190,12 +190,12 @@ FocusScope {
                 spacing: 6
                 Row {
                     width: parent.width
-                    Text { width: parent.width / 2; text: "Dernières 24 h"; color: Theme.text3; font.pixelSize: 16 }
+                    Text { width: parent.width / 2; text: app.tr("details.last24"); color: Theme.text3; font.pixelSize: 16 }
                     Text {
                         width: parent.width / 2; horizontalAlignment: Text.AlignRight
                         color: Theme.text3; font.pixelSize: 16
                         text: root.hist && root.hist.min !== null && root.hist.min !== undefined
-                              ? "min " + Model.fmtNumber(root.hist.min) + " · max " + Model.fmtNumber(root.hist.max) : ""
+                              ? app.tr("details.minmax", Model.fmtNumber(root.hist.min), Model.fmtNumber(root.hist.max)) : ""
                     }
                 }
                 Rectangle {
@@ -208,8 +208,8 @@ FocusScope {
                     Text {
                         anchors.centerIn: parent
                         visible: !root.hist || !root.hist.points || root.hist.points.length === 0
-                        text: root.hist && root.hist.recorder === false ? "Historique désactivé dans Home Assistant"
-                              : (root.hist ? "Pas encore d'historique" : "Chargement…")
+                        text: root.hist && root.hist.recorder === false ? app.tr("details.noRecorder")
+                              : app.tr(root.hist ? "details.noHistory" : "dash.loading")
                         color: Theme.text3; font.pixelSize: 16
                     }
                 }
@@ -232,7 +232,7 @@ FocusScope {
         Text {
             anchors.bottom: parent.bottom; anchors.bottomMargin: 24; anchors.horizontalCenter: parent.horizontalCenter
             width: parent.width - 48; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
-            text: root.rows.length ? "Haut/Bas : choisir · OK ou Gauche/Droite : agir · Retour : fermer" : "Retour pour fermer"
+            text: app.tr(root.rows.length ? "details.hint" : "details.hintClose")
             color: Theme.text3; font.pixelSize: 16
         }
     }

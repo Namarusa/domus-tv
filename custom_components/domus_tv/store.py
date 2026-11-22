@@ -34,7 +34,7 @@ def _default_data() -> dict[str, Any]:
     return {
         "version": 1,
         "dashboards": [
-            {"id": "home", "title": "Maison", "columns": 6, "tiles": []},
+            {"id": "home", "title": "Dashboard", "columns": 6, "tiles": []},
         ],
         "tvs": [],
     }
@@ -68,7 +68,23 @@ class DomusData:
         return int(self.data.get("version", 1))
 
     def layout(self) -> dict[str, Any]:
-        return {"version": self.version, "dashboards": self.data["dashboards"]}
+        return {"version": self.version, "dashboards": self.data["dashboards"], "language": self.language_setting}
+
+    @property
+    def language_setting(self) -> str:
+        """"auto" (Home Assistant's language) or a language code such as "en" or "fr"."""
+        return self.data.get("language", "auto")
+
+    def screen_language(self) -> str:
+        """Language the TVs and wall screens display."""
+        setting = self.language_setting
+        return self.hass.config.language if setting == "auto" else setting
+
+    async def async_set_language(self, language: str) -> int:
+        self.data["language"] = language
+        self.data["version"] = self.version + 1  # screens reload the layout, and with it the language
+        await self.async_save()
+        return self.version
 
     async def async_set_dashboards(self, dashboards: Any) -> int:
         self.data["dashboards"] = validate_dashboards(dashboards)

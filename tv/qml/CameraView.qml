@@ -27,15 +27,15 @@ FocusScope {
     function runAction(id) {
         var st = app.states[id], p = Model.linkPrimary(id, st);
         if (p.ui === "camera") { open(cameras, id); return; }
-        if (p.ui === "details") { toast.show("Utilisez le panneau Info du dashboard pour régler « " + Model.name({ entity: id }, st) + " »"); return; }
+        if (p.ui === "details") { toast.show(app.tr("camera.useInfo", Model.name({ entity: id }, st))); return; }
         if (p.ui === "confirm" && confirmEntity !== id) {
             confirmEntity = id;
-            toast.show("Appuyez encore sur OK pour " + (st && st.s === "locked" ? "déverrouiller" : "verrouiller") + " « " + Model.name({ entity: id }, st) + " »");
+            toast.show(app.tr(st && st.s === "locked" ? "confirm.unlock" : "confirm.lock", Model.name({ entity: id }, st)));
             return;
         }
         confirmEntity = "";
         app.runAction(id, p.action, p.value, function(okDone) {
-            if (okDone) toast.show("« " + Model.name({ entity: id }, app.states[id]) + " » : " + Model.stateText({ entity: id }, app.states[id]));
+            if (okDone) toast.show(app.tr("toast.state", Model.name({ entity: id }, app.states[id]), Model.stateText({ entity: id }, app.states[id])));
         });
     }
 
@@ -78,7 +78,7 @@ FocusScope {
     Text {
         visible: !img.ready
         anchors.centerIn: parent
-        text: "Chargement de l'image…"
+        text: app.tr("camera.loading")
         color: Theme.text2; font.pixelSize: 24
     }
 
@@ -96,8 +96,8 @@ FocusScope {
         Text {
             anchors.right: parent.right; anchors.rightMargin: 40; anchors.verticalCenter: parent.verticalCenter
             text: root.links.length
-                  ? "Gauche/Droite : choisir · OK : agir" + (root.cameras.length > 1 ? " · Haut/Bas : autre caméra" : "") + " · Retour : fermer"
-                  : (root.cameras.length > 1 ? (root.index + 1) + "/" + root.cameras.length + " · Gauche/Droite : autre caméra · " : "") + "Retour : fermer"
+                  ? app.tr("camera.hintActions") + (root.cameras.length > 1 ? app.tr("camera.hintOther") : "") + " · " + app.tr("camera.hintClose")
+                  : (root.cameras.length > 1 ? (root.index + 1) + "/" + root.cameras.length + " · " + app.tr("camera.hintSwitch") : "") + app.tr("camera.hintClose")
             color: Theme.text2; font.pixelSize: 18
         }
     }
@@ -133,7 +133,7 @@ FocusScope {
                     }
                     Text {
                         width: parent.width; elide: Text.ElideRight
-                        text: root.confirmEntity === modelData ? "OK pour confirmer" : Model.stateText({ entity: modelData }, parent.parent.st)
+                        text: root.confirmEntity === modelData ? app.tr("confirm.ok") : Model.stateText({ entity: modelData }, parent.parent.st)
                         color: root.confirmEntity === modelData ? Theme.warn : (parent.parent.sel ? "#3a4352" : Theme.text2)
                         font.pixelSize: 17
                     }

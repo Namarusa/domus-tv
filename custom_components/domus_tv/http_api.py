@@ -1,4 +1,4 @@
-"""REST endpoints polled by the Freebox Player app."""
+"""REST endpoints polled by the TV apps and wall screens."""
 from __future__ import annotations
 
 import functools
@@ -63,6 +63,7 @@ class PairStartView(_Base):
         if result is None:
             return self.json_message("Too many pending pairings", HTTPStatus.TOO_MANY_REQUESTS)
         result["home"] = self.hass.config.location_name
+        result["language"] = data.screen_language()
         return self.json(result)
 
 
@@ -94,7 +95,7 @@ class LayoutView(_Base):
         if data is None:
             return self.json_message("Domus TV not set up", HTTPStatus.SERVICE_UNAVAILABLE)
         self.seen(request)
-        return self.json({**data.layout(), "home": self.hass.config.location_name})
+        return self.json({**data.layout(), "home": self.hass.config.location_name, "language": data.screen_language()})
 
 
 def _compact_state(state) -> dict[str, Any]:

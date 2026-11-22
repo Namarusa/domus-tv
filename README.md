@@ -78,6 +78,13 @@ The Player must reach Home Assistant at a non-`10.0.0.x` address: the Player use
 
 Unofficial project, not affiliated with Home Assistant, the Open Home Foundation or Free. Icons: Material Design Icons (Apache 2.0).
 
+## Languages
+
+English and French. The Home Assistant pages follow each user's language; TVs and wall screens follow
+Home Assistant's language, or the one chosen in **Domus TV → Screens → Screen language**.
+All screen text lives in `tv/js/i18n.js` (shared by every app): to add a language, copy the `en` block,
+translate it, and add the same keys to `STR` in `custom_components/domus_tv/frontend/panel.js`.
+
 ## Wall screens and browsers
 
 Home Assistant serves the same app at **`http://<your-HA>:8123/domus_tv/screen`**. Open it on a wall tablet

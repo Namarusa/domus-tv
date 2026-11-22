@@ -31,16 +31,17 @@ FocusScope {
             if (!root.active) return;
             if (st === 200 && data && data.code) {
                 code = data.code; pollId = data.poll_id; home = data.home || "";
+                if (data.language) app.setLanguage(data.language);
                 console.log("Domus pairing code", code);
                 remaining = data.expires_in || 600;
                 status = "waiting";
                 pollTimer.start(); countdown.start();
             } else {
                 status = "error";
-                if (st === 0) message = "Home Assistant ne répond pas à " + settings.haUrl + ". Vérifiez l'adresse et que le Player est sur le même réseau.";
-                else if (st === 404) message = "Home Assistant répond, mais l'intégration Domus TV n'est pas installée (Paramètres → Appareils et services → Ajouter → Domus TV).";
-                else if (st === 429) message = "Trop de demandes en attente. Nouvel essai dans quelques secondes…";
-                else message = "Erreur " + st + " en contactant Home Assistant.";
+                if (st === 0) message = app.tr("pair.err.noanswer", settings.haUrl);
+                else if (st === 404) message = app.tr("pair.err.noint");
+                else if (st === 429) message = app.tr("pair.err.busy");
+                else message = app.tr("pair.err.other", st);
                 retry.start();
             }
         });
@@ -75,7 +76,7 @@ FocusScope {
         Text {
             width: parent.width; horizontalAlignment: Text.AlignHCenter
             color: Theme.text; font.pixelSize: 40; font.weight: Font.DemiBold
-            text: root.home ? "Associer ce Player à « " + root.home + " »" : "Associer ce Player"
+            text: root.home ? app.tr("pair.titleHome", app.tr("this.player"), root.home) : app.tr("pair.title", app.tr("this.player"))
         }
         Text {
             visible: app.notice !== ""
@@ -103,21 +104,21 @@ FocusScope {
             visible: root.status === "waiting"
             width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
             color: Theme.text2; font.pixelSize: 24; lineHeight: 1.3
-            text: "Dans Home Assistant, ouvrez <b>Domus TV</b> → <b>Écrans</b>, et saisissez ce code."
+            text: app.tr("pair.instructions")
             textFormat: Text.StyledText
         }
         Text {
             visible: root.status === "waiting"
             width: parent.width; horizontalAlignment: Text.AlignHCenter
             color: Theme.text3; font.pixelSize: 20
-            text: "En attente… code valable encore " + Math.floor(root.remaining / 60) + " min " + (root.remaining % 60 < 10 ? "0" : "") + (root.remaining % 60) + " s"
+            text: app.tr("pair.waiting", Math.floor(root.remaining / 60), (root.remaining % 60 < 10 ? "0" : "") + (root.remaining % 60))
         }
 
         Text {
             visible: root.status === "connecting"
             width: parent.width; horizontalAlignment: Text.AlignHCenter
             color: Theme.text2; font.pixelSize: 26
-            text: "Connexion à " + settings.haUrl + "…"
+            text: app.tr("pair.connecting", settings.haUrl)
         }
         Text {
             visible: root.status === "error"
@@ -128,7 +129,7 @@ FocusScope {
         Text {
             width: parent.width; horizontalAlignment: Text.AlignHCenter
             color: Theme.text3; font.pixelSize: 18
-            text: "Retour : changer l'adresse · OK : nouveau code"
+            text: app.tr("pair.hint")
         }
     }
 }

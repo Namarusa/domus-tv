@@ -16,10 +16,10 @@ FocusScope {
         var out = [];
         for (var i = 0; i < dashboards.length; i++)
             out.push({ label: (i + 1) + ". " + dashboards[i].title, icon: dashboards[i].icon ? dashboards[i].icon.replace("mdi:", "") : "view-dashboard", dash: i });
-        out.push({ label: "Recharger", icon: "refresh", cmd: "reload" });
-        out.push({ label: "Changer d'adresse", icon: "server-network", cmd: "server" });
-        out.push({ label: confirmForget ? "Confirmer : oublier ce Player" : "Oublier ce Player", icon: "link-off", cmd: "forget" });
-        out.push({ label: "Quitter Domus", icon: "exit-to-app", cmd: "quit" });
+        out.push({ label: app.tr("menu.reload"), icon: "refresh", cmd: "reload" });
+        out.push({ label: app.tr("menu.server"), icon: "server-network", cmd: "server" });
+        out.push({ label: app.tr(confirmForget ? "menu.forgetConfirm" : "menu.forget", app.tr("this.player")), icon: "link-off", cmd: "forget" });
+        out.push({ label: app.tr("menu.quit"), icon: "exit-to-app", cmd: "quit" });
         return out;
     }
 
@@ -103,7 +103,7 @@ FocusScope {
         }
         Text {
             anchors.bottom: parent.bottom; anchors.bottomMargin: 20; anchors.left: parent.left; anchors.leftMargin: 28
-            text: "Domus " + Config.VERSION + " · « Oublier » ne retire pas l'accès dans HA"
+            text: "Domus " + Config.VERSION + " · " + app.tr("menu.footer")
             color: Theme.text3; font.pixelSize: 14
         }
     }
